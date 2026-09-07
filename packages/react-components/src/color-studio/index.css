@@ -11,6 +11,9 @@
     "left   main   right"
     "bottom bottom bottom";
   width: 100%;
+  /* 固定高度而非 min-height:grid 中间行 1fr 在容器有确定高度时才有上限,
+     三栏 overflow: auto 才能正确触发;min-height 会被内容撑高导致永不滚动。 */
+  height: 100dvh;
   min-height: 100vh;
   gap: var(--sl-space-3, 12px);
   padding: var(--sl-space-3, 12px);
