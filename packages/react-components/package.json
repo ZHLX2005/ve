@@ -13,6 +13,7 @@
     "@remotion/transitions": "4.0.505",
     "@style-library/component-contract": "workspace:*",
     "culori": "^4.0.0",
+    "perfect-freehand": "^1.2.3",
     "react": "^19.0.0",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.0.0",
