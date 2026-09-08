@@ -1,6 +1,6 @@
 // packages/react-components/src/color-studio/src/components/ColorChip.tsx
 //
-// 单色小卡:色块 + hex + 锁定切换 + 删除 + 菜单入口。
+// 单色小卡:色块 + hex + 锁定切换 + 删除。
 // 点击整卡 = 选中(色盘/详情跟随)。派生条目带角标。
 
 import { Icon } from './ui/Icon';
@@ -10,12 +10,11 @@ interface Props {
   entry: ColorEntry;
   onRemove?: (id: string) => void;
   onToggleLock?: (id: string) => void;
-  onSetGroup?: (id: string) => void;
   onClick?: (id: string) => void;
   active?: boolean;
 }
 
-export function ColorChip({ entry, onRemove, onToggleLock, onSetGroup, onClick, active }: Props) {
+export function ColorChip({ entry, onRemove, onToggleLock, onClick, active }: Props) {
   return (
     <div
       className={`sl-cs-chip ${active ? 'is-active' : ''}`}
@@ -36,17 +35,6 @@ export function ColorChip({ entry, onRemove, onToggleLock, onSetGroup, onClick, 
       </span>
       <code className="sl-cs-chip__hex">{entry.hex}</code>
       <div className="sl-cs-chip__actions" onClick={(e) => e.stopPropagation()}>
-        {onSetGroup && (
-          <button
-            type="button"
-            className="sl-cs-chip__act"
-            onClick={() => onSetGroup(entry.id)}
-            aria-label="更多操作"
-            title="更多操作(提升为全局色)"
-          >
-            <Icon name="group" size={12} />
-          </button>
-        )}
         {onToggleLock && (
           <button
             type="button"

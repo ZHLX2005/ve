@@ -18,7 +18,6 @@ import { ExportModal } from './src/components/ExportModal';
 import { ImportModal } from './src/components/ImportModal';
 import { CookbookPage } from './src/components/CookbookPage';
 import { ProportionalView } from './src/components/ProportionalView';
-import { TokenPanel } from './src/components/TokenPanel';
 import { FilterPanel } from './src/components/FilterPanel';
 import { BrushCanvas } from './src/components/BrushCanvas';
 import { Btn } from './src/components/ui/Btn';
@@ -111,7 +110,6 @@ function Shell() {
       </header>
       <aside className="sl-cs__left">
         <PaletteSidebar />
-        <TokenPanel />
       </aside>
       <main className="sl-cs__main">
         <nav className="sl-cs__viewnav" role="tablist" aria-label="工作区视图">

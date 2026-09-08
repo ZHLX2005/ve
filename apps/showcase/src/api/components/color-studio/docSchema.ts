@@ -1,7 +1,7 @@
 // apps/showcase/src/api/components/color-studio/docSchema.ts
 //
 // Zod 校验 ColorStudioDocument 的导入/导出边界。
-// v1.2.0 加 GlobalToken / FilterStack / tokenId / mainView;
+// v1.2.0 加 FilterStack / mainView;
 // load 1.0.0 / 1.1.0 旧文档自动升级(补默认字段 + schemaVersion bump)。
 
 import { z } from 'zod';
@@ -51,21 +51,10 @@ const colorEntryV130Schema = z.object({
   note: z.string(),
   tags: z.array(z.string()),
   group: z.string().optional(), // deprecated,旧数据 passthrough
-  tokenId: z.string().optional(),
   derivedFrom: z.object({
     paletteId: z.string(),
     rule: harmonyTypeSchema,
   }).optional(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-});
-
-const globalTokenSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  hex: hexSchema,
-  group: z.string().optional(),
-  note: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });
@@ -103,7 +92,6 @@ const docV130Schema = z.object({
   activePaletteId: z.string(),
   palettes: z.array(paletteSchema).min(1),
   colorEntries: z.array(colorEntryV130Schema).min(1),
-  globalTokens: z.array(globalTokenSchema),
   filterStack: z.array(filterConfigSchema),
   pickHistory: z.array(pickHistoryItemSchema).max(12),
   viewState: viewStateV130Schema,
@@ -111,7 +99,6 @@ const docV130Schema = z.object({
 
 // ── v1.2.0(legacy:无 selectedColorId)─────────────────────
 
-const colorEntryV120Schema = colorEntryV130Schema;
 const viewStateV120Schema = viewStateV130Schema.omit({ selectedColorId: true });
 const metaV120Schema = z.object({
   schemaVersion: z.literal('1.2.0'),
@@ -123,8 +110,7 @@ const docV120Schema = z.object({
   meta: metaV120Schema,
   activePaletteId: z.string(),
   palettes: z.array(paletteSchema).min(1),
-  colorEntries: z.array(colorEntryV120Schema).min(1),
-  globalTokens: z.array(globalTokenSchema),
+  colorEntries: z.array(colorEntryV130Schema).min(1),
   filterStack: z.array(filterConfigSchema),
   pickHistory: z.array(pickHistoryItemSchema).max(12),
   viewState: viewStateV120Schema,
@@ -132,7 +118,7 @@ const docV120Schema = z.object({
 
 // ── v1.1.0(legacy:无 token/filter/mainView)───────────────
 
-const colorEntryV110Schema = colorEntryV120Schema.omit({ tokenId: true });
+const colorEntryV110Schema = colorEntryV130Schema;
 const viewStateV110Schema = viewStateV120Schema.omit({ mainView: true });
 const metaV110Schema = z.object({
   schemaVersion: z.literal('1.1.0'),
@@ -185,7 +171,6 @@ export const docSchema = z
       return {
         ...d,
         meta: { ...d.meta, schemaVersion: '1.3.0' as const },
-        globalTokens: [],
         filterStack: [],
         viewState: { ...d.viewState, mainView: 'wheel' as const, selectedColorId: null },
       };
@@ -194,7 +179,6 @@ export const docSchema = z
     return {
       ...d,
       meta: { ...d.meta, schemaVersion: '1.3.0' as const },
-      globalTokens: [],
       filterStack: [],
       viewState: {
         ...d.viewState,

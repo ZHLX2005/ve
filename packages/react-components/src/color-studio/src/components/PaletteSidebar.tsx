@@ -1,8 +1,7 @@
 // packages/react-components/src/color-studio/src/components/PaletteSidebar.tsx
 //
 // 调色板列表 + CRUD + 选 active + 上下移 + 色卡点击选中(色盘跟随)。
-// v1.3.0:分组概念移除(调色板是唯一分组模型);色卡菜单保留
-// 提升为全局色 / 锁定 / 删除。
+// v1.3.0:分组概念移除(调色板是唯一分组模型)。
 
 import { useMemo, useState } from 'react';
 import { useColorStudio } from '../state/useColorStudio';
@@ -12,7 +11,6 @@ import { Btn } from './ui/Btn';
 import { makeId } from '../utils/id';
 import { resolveNewColorHex } from '../engine/colorMath';
 import { addColorEntryAndSelect } from '../engine/wheelCommit';
-import { promoteToToken } from '../engine/tokenLink';
 import { useSelectedColor } from '../hooks/useSelectedColor';
 import type { ColorEntry } from '../../../../../../apps/showcase/src/api/components/color-studio/types';
 
@@ -24,7 +22,6 @@ export function PaletteSidebar() {
   const [newPaletteName, setNewPaletteName] = useState('');
   const [createMode, setCreateMode] = useState<'input' | null>(null);
   const [newColorHex, setNewColorHex] = useState('');
-  const [groupMenuFor, setGroupMenuFor] = useState<string | null>(null);
 
   const activePalette = doc.palettes.find((p) => p.id === doc.activePaletteId);
   const activeEntries = useMemo(() => {
@@ -114,12 +111,6 @@ export function PaletteSidebar() {
     }));
   };
 
-  /** 提升为全局色 */
-  const promoteToGlobal = (entryId: string) => {
-    setDoc((d) => promoteToToken(d, entryId, '').doc);
-    setGroupMenuFor(null);
-  };
-
   return (
     <div className="sl-cs-palettes">
       <h3>调色板</h3>
@@ -180,22 +171,7 @@ export function PaletteSidebar() {
               onClick={select}
               onRemove={removeColor}
               onToggleLock={toggleLock}
-              onSetGroup={() => setGroupMenuFor(groupMenuFor === e.id ? null : e.id)}
             />
-            {groupMenuFor === e.id && (
-              <div className="sl-cs-palettes__groupmenu" role="menu">
-                {!e.tokenId && (
-                  <button type="button" role="menuitem" onClick={() => promoteToGlobal(e.id)} title="创建/复用全局色并链接本条目">
-                    <Icon name="sync" size={11} /> 提升为全局色
-                  </button>
-                )}
-                {e.tokenId && (
-                  <span className="sl-cs-palettes__tokenhint" title="已链接全局色,改全局色即联动">
-                    <Icon name="sync" size={11} /> 已链接全局色
-                  </span>
-                )}
-              </div>
-            )}
             <button
               type="button"
               className="sl-cs-chip__act"

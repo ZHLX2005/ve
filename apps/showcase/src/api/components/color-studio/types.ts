@@ -23,20 +23,7 @@ export interface ColorEntry {
   tags: string[];
   /** @deprecated v1.3.0 起废弃:调色板是唯一分组模型。字段仅为旧数据兼容保留。 */
   group?: string;
-  /** v1.2.0:链接的全局 Token id;token hex 变化时同步本条目 */
-  tokenId?: string;
   derivedFrom?: { paletteId: string; rule: HarmonyType };
-  createdAt: number;
-  updatedAt: number;
-}
-
-/** v1.2.0:全局色彩变量。token 持有 hex 真源;条目通过 tokenId 链接联动。 */
-export interface GlobalToken {
-  id: string;
-  name: string;
-  hex: Hex;
-  group?: string;
-  note?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -106,8 +93,6 @@ export interface ColorStudioDocument {
   activePaletteId: string;
   palettes: Palette[];
   colorEntries: ColorEntry[];
-  /** v1.2.0:全局色彩变量层 */
-  globalTokens: GlobalToken[];
   /** v1.2.0:非破坏性滤镜栈(有序、可开关) */
   filterStack: FilterConfig[];
   pickHistory: PickHistoryItem[];
@@ -149,7 +134,6 @@ export function emptyDoc(authorEmail = '', now = Date.now()): ColorStudioDocumen
         updatedAt: now,
       },
     ],
-    globalTokens: [],
     filterStack: [],
     pickHistory: [],
     viewState: {

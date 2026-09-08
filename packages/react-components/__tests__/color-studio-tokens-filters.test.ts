@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { filterStackToCss } from '../src/color-studio/src/engine/filterCss';
-import { promoteToToken, unlinkToken, syncTokenLinks } from '../src/color-studio/src/engine/tokenLink';
 import { normalizeWeights, donutSlicePath } from '../src/color-studio/src/engine/proportional';
 import { docSchema } from '../../../apps/showcase/src/api/components/color-studio/docSchema';
 import { emptyDoc } from '../../../apps/showcase/src/api/components/color-studio/types';
@@ -33,52 +32,6 @@ describe('filterCss', () => {
   });
 });
 
-describe('tokenLink', () => {
-  it('promoteToToken creates token + links entry', () => {
-    const doc = emptyDoc();
-    const { doc: next, tokenId } = promoteToToken(doc, doc.colorEntries[0].id, '品牌蓝');
-    expect(next.globalTokens).toHaveLength(1);
-    expect(next.globalTokens[0].name).toBe('品牌蓝');
-    expect(next.globalTokens[0].hex).toBe('#3B82F6');
-    expect(next.colorEntries[0].tokenId).toBe(tokenId);
-  });
-
-  it('promoteToToken reuses existing token with same hex', () => {
-    let doc = emptyDoc();
-    const id1 = doc.colorEntries[0].id;
-    const r1 = promoteToToken(doc, id1, 'A');
-    doc = r1.doc;
-    // 加第二个同 hex 条目
-    doc = { ...doc, colorEntries: [...doc.colorEntries, entry('e2', '#3B82F6')] };
-    const r2 = promoteToToken(doc, 'e2', 'B');
-    expect(r2.tokenId).toBe(r1.tokenId);
-    expect(r2.doc.globalTokens).toHaveLength(1);
-  });
-
-  it('unlinkToken removes reference but keeps token', () => {
-    let doc = emptyDoc();
-    const r = promoteToToken(doc, doc.colorEntries[0].id, 'T');
-    doc = unlinkToken(r.doc, doc.colorEntries[0].id);
-    expect(doc.colorEntries[0].tokenId).toBeUndefined();
-    expect(doc.globalTokens).toHaveLength(1);
-  });
-
-  it('syncTokenLinks updates all linked entries', () => {
-    let doc = emptyDoc();
-    const r = promoteToToken(doc, doc.colorEntries[0].id, 'T');
-    doc = { ...r.doc, colorEntries: [...r.doc.colorEntries, { ...entry('e2', '#000000'), tokenId: r.tokenId }] };
-    const synced = syncTokenLinks(doc, r.tokenId, '#FF0000');
-    expect(synced).not.toBeNull();
-    expect(synced?.colorEntries[0].hex).toBe('#FF0000');
-    expect(synced?.colorEntries[1].hex).toBe('#FF0000');
-  });
-
-  it('syncTokenLinks returns null when nothing linked changed', () => {
-    const doc = emptyDoc();
-    expect(syncTokenLinks(doc, 'nonexistent', '#FF0000')).toBeNull();
-  });
-});
-
 describe('proportional', () => {
   it('normalizes weights to percentages', () => {
     const slices = normalizeWeights([entry('a', '#111111', 3), entry('b', '#222222', 1)]);
@@ -103,24 +56,21 @@ describe('proportional', () => {
   });
 });
 
-describe('docSchema 1.2.0 migration', () => {
-  it('emptyDoc emits 1.2.0 with globalTokens/filterStack/mainView', () => {
+describe('docSchema migration', () => {
+  it('emptyDoc emits 1.3.0 with filterStack/mainView', () => {
     const doc = emptyDoc();
     expect(doc.meta.schemaVersion).toBe('1.3.0');
-    expect(doc.globalTokens).toEqual([]);
     expect(doc.filterStack).toEqual([]);
     expect(doc.viewState.mainView).toBe('wheel');
   });
 
-  it('1.1.0 doc migrates: tokens/filters empty, mainView wheel', () => {
+  it('1.1.0 doc migrates: filters empty, mainView wheel', () => {
     const old = emptyDoc() as Record<string, unknown>;
     (old.meta as Record<string, unknown>).schemaVersion = '1.1.0';
-    delete old.globalTokens;
     delete old.filterStack;
     (old.viewState as Record<string, unknown>).mainView = undefined;
     const parsed = docSchema.parse(old);
     expect(parsed.meta.schemaVersion).toBe('1.3.0');
-    expect(parsed.globalTokens).toEqual([]);
     expect(parsed.filterStack).toEqual([]);
     expect(parsed.viewState.mainView).toBe('wheel');
   });
@@ -128,7 +78,6 @@ describe('docSchema 1.2.0 migration', () => {
   it('1.0.0 doc migrates through both hops', () => {
     const old = emptyDoc() as Record<string, unknown>;
     (old.meta as Record<string, unknown>).schemaVersion = '1.0.0';
-    delete old.globalTokens;
     delete old.filterStack;
     delete (old.viewState as Record<string, unknown>).groupBy;
     const parsed = docSchema.parse(old);
@@ -137,7 +86,7 @@ describe('docSchema 1.2.0 migration', () => {
     expect(parsed.viewState.mainView).toBe('wheel');
   });
 
-  it('docSchema.parse(emptyDoc()) passes at 1.2.0', () => {
+  it('docSchema.parse(emptyDoc()) passes', () => {
     expect(() => docSchema.parse(emptyDoc())).not.toThrow();
   });
 });
