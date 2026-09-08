@@ -292,3 +292,116 @@ describe('double-click = accelerated hold (instant popup)', () => {
     ).toMatch(/ControlLeft/);
   });
 });
+
+describe('hover popup: continuity (grace close + popup adoption) + full list', () => {
+  const HOVER_OPEN_DELAY = 150;
+  const POPUP_CLOSE_DELAY = 200;
+
+  /** 触发 React 合成 onMouseEnter:dispatch mouseover(relatedTarget 在键外) */
+  function hoverEnterKey(key: HTMLElement): void {
+    key.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: document.body }));
+  }
+
+  /** 触发 React 合成 onPointerLeave:dispatch pointerout(relatedTarget 在键外) */
+  function hoverLeaveKey(key: HTMLElement): void {
+    key.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, button: 0, relatedTarget: document.body }));
+  }
+
+  it('hover opens popup; leaving the key does NOT close it instantly (grace)', async () => {
+    vi.useFakeTimers();
+    try {
+      seed();
+      await act(async () => { root.render(<ShortcutLibrary />); });
+      const key = container.querySelector('.sl-sl-kb__key[title="KeyR"]') as HTMLElement | null;
+      expect(key).not.toBeNull();
+
+      await act(async () => { hoverEnterKey(key!); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(HOVER_OPEN_DELAY); });
+      expect(document.querySelectorAll('.sl-sl-longpress').length, 'hover must open popup').toBe(1);
+
+      // 离开键:宽限期内 popup 保持(旧行为是瞬间关闭,这是本次修复点)
+      await act(async () => { hoverLeaveKey(key!); });
+      expect(
+        document.querySelectorAll('.sl-sl-longpress').length,
+        'popup survives leaving the key during grace',
+      ).toBe(1);
+
+      // 超过宽限 → 关闭
+      await act(async () => { await vi.advanceTimersByTimeAsync(POPUP_CLOSE_DELAY + 10); });
+      expect(document.querySelectorAll('.sl-sl-longpress').length, 'popup closes after grace').toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('entering the popup cancels the pending close; leaving the popup closes after grace', async () => {
+    vi.useFakeTimers();
+    try {
+      seed();
+      await act(async () => { root.render(<ShortcutLibrary />); });
+      const key = container.querySelector('.sl-sl-kb__key[title="KeyR"]') as HTMLElement | null;
+      expect(key).not.toBeNull();
+
+      await act(async () => { hoverEnterKey(key!); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(HOVER_OPEN_DELAY); });
+      const popup = document.querySelector('.sl-sl-longpress') as HTMLElement | null;
+      expect(popup).not.toBeNull();
+
+      // 离开键 → 宽限启动;移入 popup → 取消待关闭
+      await act(async () => { hoverLeaveKey(key!); });
+      await act(async () => { popup!.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false })); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(POPUP_CLOSE_DELAY + 50); });
+      expect(
+        document.querySelectorAll('.sl-sl-longpress').length,
+        'popup stays open while the pointer is inside it',
+      ).toBe(1);
+
+      // 移出 popup → 宽限后关闭
+      await act(async () => { popup!.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false })); });
+      expect(
+        document.querySelectorAll('.sl-sl-longpress').length,
+        'popup survives during grace after popup leave',
+      ).toBe(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(POPUP_CLOSE_DELAY + 10); });
+      expect(document.querySelectorAll('.sl-sl-longpress').length, 'popup closes after leaving popup').toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows ALL bindings for a heavily-bound key (no "… 还有 N 条")', async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem(
+        'sl-shortcut-library:v1',
+        JSON.stringify([
+          {
+            id: 'g1', name: 'VSCode', createdAt: 0, updatedAt: 0,
+            shortcuts: Array.from({ length: 7 }, (_, i) => ({
+              id: `s${i}`, createdAt: 0,
+              combo: [{ code: 'KeyR', label: 'R', isModifier: false }],
+              description: `binding ${i}`,
+            })),
+          },
+        ]),
+      );
+      await act(async () => { root.render(<ShortcutLibrary />); });
+      const key = container.querySelector('.sl-sl-kb__key[title="KeyR"]') as HTMLElement | null;
+      expect(key).not.toBeNull();
+
+      await act(async () => {
+        key!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }));
+      });
+      await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+      const popup = document.querySelector('.sl-sl-longpress');
+      expect(popup).not.toBeNull();
+      expect(
+        popup!.querySelectorAll('.sl-sl-longpress__item').length,
+        'all 7 bindings must render',
+      ).toBe(7);
+      expect(popup!.textContent).not.toMatch(/还有/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

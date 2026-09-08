@@ -29,8 +29,9 @@ import FullscreenCanvas from './src/pages/FullscreenCanvas';
 const KEY_HOLD_MS = 400;
 // 悬停多久后弹 mapping popup —— 比长按更轻量,做"扫一眼"用;无绑定的键不弹。
 const HOVER_OPEN_DELAY = 150;
-// 长按 popup 最多展示的映射数,超出显示「…还有 N 条」
-const LONG_PRESS_MAX = 5;
+// 悬浮关闭宽限 —— 鼠标离开键 / 离开 popup 后延迟关闭,给「从键移入 popup
+// 滚动长列表」留出时间;期间进入 popup 或另一个键会取消这次待关闭。
+const POPUP_CLOSE_DELAY = 200;
 
 // 键盘预览折叠状态独立 key,不与 shortcut 数据混在一起,
 // 避免清空数据时连带把"是否折叠"也抹掉
@@ -262,6 +263,15 @@ export default function ShortcutLibrary() {
   const holdTimers = useRef<Map<string, number>>(new Map());
   // 悬停延迟弹 popup 的 timer(同一时刻只挂一个:mouseenter 先清旧再挂新)。
   const hoverTimer = useRef<number | undefined>(undefined);
+  // 悬浮关闭宽限 timer:鼠标离开键 / 离开 popup 后延迟关闭,期间被新悬停
+  // 或 popup 内移动取消。保证长列表可以从键一路滑进 popup 里滚动。
+  const popupCloseTimer = useRef<number | undefined>(undefined);
+  // 当前 popup 的打开来源(悬停 / 长按 / 双击)。悬停来源的 popup 在鼠标
+  // 移到「无绑定」的另一个键时主动收掉;长按 / 双击打开的保留给用户查看。
+  const popupSourceRef = useRef<{ code: string; mode: 'hover' | 'hold' | 'dblclick' } | null>(null);
+  // popup 根节点 —— 原生监听 pointerenter/leave(portal 事件不走 React
+  // 委托,且 enter/leave 不冒泡,原生最稳)。
+  const popupRef = useRef<HTMLDivElement | null>(null);
   // 同步一份 heldKeys(只读)给 onBlur 用 —— onBlur 里要清掉所有 timer,
   // 但 React 的 setHeldKeys 异步,onBlur 直接读 heldKeys state 拿不到最新值。
   // 用 ref 同步最新值。
@@ -302,14 +312,34 @@ export default function ShortcutLibrary() {
       const hits = findBindingsByCode(scope, code);
       // 即使没有 hits 也展示 popup,告诉用户「该键未被任何分组使用」。
       // 长按是非 pin 的(松开后可被外部点击关闭)。
+      popupSourceRef.current = { code, mode: 'hold' };
       setLongPressPopup({ code, rect, hits });
     },
     [store.selectedGroup],
   );
 
-  const handleLongPressClose = useCallback(() => {
-    setLongPressPopup(null);
+  const clearPopupCloseTimer = useCallback(() => {
+    if (popupCloseTimer.current !== undefined) {
+      window.clearTimeout(popupCloseTimer.current);
+      popupCloseTimer.current = undefined;
+    }
   }, []);
+
+  // 启动关闭宽限:不立即关 popup,给「键 → popup」的跨越留时间。
+  const startPopupCloseTimer = useCallback(() => {
+    clearPopupCloseTimer();
+    popupCloseTimer.current = window.setTimeout(() => {
+      popupCloseTimer.current = undefined;
+      popupSourceRef.current = null;
+      setLongPressPopup(null);
+    }, POPUP_CLOSE_DELAY);
+  }, [clearPopupCloseTimer]);
+
+  const handleLongPressClose = useCallback(() => {
+    clearPopupCloseTimer();
+    popupSourceRef.current = null;
+    setLongPressPopup(null);
+  }, [clearPopupCloseTimer]);
 
   // 悬停进入:延迟 HOVER_OPEN_DELAY 后弹(无绑定不弹)。
   // 用 setLongPressPopup 的函数式更新读最新 popup,避免闭包里 popup 过期。
@@ -322,34 +352,48 @@ export default function ShortcutLibrary() {
         window.clearTimeout(hoverTimer.current);
         hoverTimer.current = undefined;
       }
+      // 移入任何键都取消「待关闭」:键→popup→键 之间来回不会闪
+      clearPopupCloseTimer();
       const t = window.setTimeout(() => {
         hoverTimer.current = undefined;
         const scope = store.selectedGroup ? [store.selectedGroup] : [];
         const hits = findBindingsByCode(scope, code);
         setLongPressPopup((prev) => {
-          if (hits.length === 0) return prev; // 无绑定不弹(悬停是"扫一眼",空 popup 是噪音)
+          if (hits.length === 0) {
+            // 无绑定不弹(悬停是"扫一眼",空 popup 是噪音)。若上一个 popup
+            // 是悬停打开的另一个键,顺手收掉;长按 / 双击打开的不动。
+            if (prev && popupSourceRef.current?.mode === 'hover' && popupSourceRef.current.code !== code) {
+              popupSourceRef.current = null;
+              return null;
+            }
+            return prev;
+          }
+          popupSourceRef.current = { code, mode: 'hover' };
           return { code, rect, hits };
         });
       }, HOVER_OPEN_DELAY);
       hoverTimer.current = t;
     },
-    [store.selectedGroup],
+    [store.selectedGroup, clearPopupCloseTimer],
   );
 
-  // 悬停离开:取消待触发的 hover timer;关闭当前 popup。
-  const handleHoverLeave = useCallback((code: string) => {
+  // 悬停离开:取消待触发的 hover timer,但不立即关闭 —— 启动宽限 timer,
+  // 鼠标在 POPUP_CLOSE_DELAY 内滑进 popup(或回到键)时会被取消。
+  // 注:回调签名不带 code —— 宽限关闭与具体是哪个键无关,任何键离开都适用。
+  const handleHoverLeave = useCallback(() => {
     if (hoverTimer.current !== undefined) {
       window.clearTimeout(hoverTimer.current);
       hoverTimer.current = undefined;
     }
-    setLongPressPopup((prev) => (prev?.code === code ? null : prev));
-  }, []);
+    startPopupCloseTimer();
+  }, [startPopupCloseTimer]);
 
   // 双击:弹 popup 并 pin 住。清掉可能残留的 hold / hover 定时器,避免它们事后
   // 把 pin 改回非 pin。即使无绑定也弹(pin 是用户主动检查)。
   // 范围:仅当前选中组。
   const handleDoubleClickKey = useCallback(
     (code: string, rect: DOMRect) => {
+      clearPopupCloseTimer();
       if (hoverTimer.current !== undefined) {
         window.clearTimeout(hoverTimer.current);
         hoverTimer.current = undefined;
@@ -362,9 +406,10 @@ export default function ShortcutLibrary() {
       }
       const scope = store.selectedGroup ? [store.selectedGroup] : [];
       const hits = findBindingsByCode(scope, code);
+      popupSourceRef.current = { code, mode: 'dblclick' };
       setLongPressPopup({ code, rect, hits });
     },
-    [store.selectedGroup],
+    [store.selectedGroup, clearPopupCloseTimer],
   );
 
   // 统一的「按下」「松开」入口(鼠标 / 触屏 / 物理键共享)。
@@ -446,6 +491,28 @@ export default function ShortcutLibrary() {
       window.removeEventListener('pointerup', onPointerUp);
     };
   }, [longPressPopup, handleLongPressClose]);
+
+  // popup 本身也是悬浮目标:移入取消「待关闭」(可以放心滚动长列表),
+  // 移出再启动宽限关闭。用原生 listener —— pointerenter/leave 不冒泡,
+  // 且 portal 节点不在 React 委托的根容器内,原生最稳。
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el) return;
+    el.addEventListener('pointerenter', clearPopupCloseTimer);
+    el.addEventListener('pointerleave', startPopupCloseTimer);
+    return () => {
+      el.removeEventListener('pointerenter', clearPopupCloseTimer);
+      el.removeEventListener('pointerleave', startPopupCloseTimer);
+    };
+  }, [longPressPopup, clearPopupCloseTimer, startPopupCloseTimer]);
+
+  // 卸载时清掉关闭宽限 timer,避免对已卸载组件 setState
+  useEffect(() => () => {
+    if (popupCloseTimer.current !== undefined) {
+      window.clearTimeout(popupCloseTimer.current);
+      popupCloseTimer.current = undefined;
+    }
+  }, []);
 
   // 全局 keydown / keyup 监听:物理键盘长按 → visual key 变蓝 → KEY_HOLD_MS
   // 后弹 mapping popup。鼠标 / 触屏长按由 Keyboard 子组件直接 onPress。
@@ -751,6 +818,7 @@ export default function ShortcutLibrary() {
           外部点击/键盘 Esc 关闭;Keyboard 鼠标松开也会主动关闭 */}
       {portalRoot && longPressPopup && longPressPopupPos && createPortal(
         <div
+          ref={popupRef}
           className="sl-sl-longpress"
           role="dialog"
           aria-label={`按键 ${longPressPopup.code} 的映射`}
@@ -771,7 +839,9 @@ export default function ShortcutLibrary() {
             <div className="sl-sl-longpress__empty">该键尚未被任何分组使用</div>
           ) : (
             <ul className="sl-sl-longpress__list">
-              {longPressPopup.hits.slice(0, LONG_PRESS_MAX).map((h) => (
+              {/* 全部命中项直接渲染,popup 内滚动(max-height + overflow-y:auto),
+                  不再截断成「… 还有 N 条」 */}
+              {longPressPopup.hits.map((h) => (
                 <li key={h.shortcutId} className="sl-sl-longpress__item">
                   <div className="sl-sl-longpress__row">
                     <span className="sl-sl-longpress__group">{h.groupName}</span>
@@ -785,11 +855,6 @@ export default function ShortcutLibrary() {
                   )}
                 </li>
               ))}
-              {longPressPopup.hits.length > LONG_PRESS_MAX && (
-                <li className="sl-sl-longpress__more">
-                  … 还有 {longPressPopup.hits.length - LONG_PRESS_MAX} 条
-                </li>
-              )}
             </ul>
           )}
         </div>,

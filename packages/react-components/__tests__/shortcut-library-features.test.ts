@@ -267,7 +267,17 @@ describe('feature 3 — long-press mapping popup + flash throttle', () => {
     // overflow-x:auto (and any other scroll container in the tree).
     expect(indexTsx).toMatch(/createPortal/);
     expect(indexTsx).toMatch(/sl-sl-longpress/);
-    expect(indexTsx).toMatch(/LONG_PRESS_MAX/);
+  });
+
+  it('renders ALL bindings for a key — no "… 还有 N 条" truncation', () => {
+    // 用户反馈:悬浮预览的长列表要全部显示,不要截断成「… 还有 N 条」。
+    // 实现:全部 hits 直接 map 渲染,popup 内滚动(max-height + overflow-y:auto)。
+    expect(indexTsx).not.toMatch(/LONG_PRESS_MAX/);
+    // 旧的截断 JSX(「… 还有 {hits.length - MAX} 条」)必须消失;注释里出现
+    // 「还有」二字不算,运行期行为由 shortcut-library-pressed.test.tsx 锁定
+    expect(indexTsx).not.toMatch(/还有\s*\{longPressPopup/);
+    expect(indexTsx).toMatch(/longPressPopup\.hits\.map/);
+    expect(css).toMatch(/overflow-y:\s*auto/);
   });
 
   it('popup positioning avoids viewport edges', () => {
@@ -346,5 +356,16 @@ describe('feature 6 — hover + double-click-pin reveal', () => {
     expect(keyboard).not.toMatch(/pinned/i);
     expect(css).not.toMatch(/is-pinned/);
     expect(css).not.toMatch(/longpress__pin/);
+  });
+
+  it('hover popup has a close grace + popup hover adoption (hover continuity)', () => {
+    // 悬浮连贯性:离开键不立即关闭(宽限),移入 popup 取消待关闭,
+    // popup 用原生 pointerenter/pointerleave(portal 事件不走 React 委托)。
+    expect(indexTsx).toMatch(/POPUP_CLOSE_DELAY\s*=\s*\d+/);
+    expect(indexTsx).toMatch(/startPopupCloseTimer/);
+    expect(indexTsx).toMatch(/clearPopupCloseTimer/);
+    expect(indexTsx).toMatch(/addEventListener\('pointerenter'/);
+    expect(indexTsx).toMatch(/addEventListener\('pointerleave'/);
+    expect(indexTsx).toMatch(/popupRef/);
   });
 });

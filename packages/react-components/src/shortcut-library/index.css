@@ -773,6 +773,8 @@
   width: 260px;
   max-height: 240px;
   overflow-y: auto;
+  /* 滚动到边界不联动背后页面(悬浮滚动长列表时页面不应跟着滚) */
+  overscroll-behavior: contain;
   background: var(--sl-color-surface, #fff);
   border: 1px solid var(--sl-color-border, #e4e4e7);
   border-radius: 8px;
@@ -851,12 +853,6 @@
   color: var(--sl-color-warning-text, #92400e);
   margin-top: 4px;
   font-style: italic;
-}
-.sl-sl-longpress__more {
-  text-align: center;
-  font-size: 11px;
-  color: var(--sl-color-text-mute, #9ca3af);
-  padding: 4px 0;
 }
 
 /* ===== Row-hover Description Tooltip ===== */
