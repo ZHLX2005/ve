@@ -88,6 +88,44 @@ describe('resolveCombo', () => {
       }
     });
   });
+
+  // 兼容层:AI 生成 TOML 时经常把方向键写成英文名(Alt+Left / ArrowUp 等),
+  // 解析器必须能识别并归一为 ArrowXxx,否则 Grasshopper 这类方向键大户直接导入失败。
+  describe('direction key aliases (AI-generated combos)', () => {
+    it.each([
+      ['Left', 'ArrowLeft', '←'],
+      ['Right', 'ArrowRight', '→'],
+      ['Up', 'ArrowUp', '↑'],
+      ['Down', 'ArrowDown', '↓'],
+      ['ArrowLeft', 'ArrowLeft', '←'],
+      ['ArrowRight', 'ArrowRight', '→'],
+      ['ArrowUp', 'ArrowUp', '↑'],
+      ['ArrowDown', 'ArrowDown', '↓'],
+    ])('resolves %s → code %s / label %s', (input, code, label) => {
+      const result = resolveCombo(input);
+      expect(result, `"${input}" must resolve, got: ${String(result)}`).toBeInstanceOf(Array);
+      const keys = result as KeyStroke[];
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toMatchObject({ code, label, isModifier: false });
+    });
+
+    it('resolves modifier + English direction name combos (Grasshopper style)', () => {
+      for (const [input, expectedCode] of [
+        ['Alt+Left', 'ArrowLeft'],
+        ['Alt+Right', 'ArrowRight'],
+        ['Ctrl+Alt+Shift+Left', 'ArrowLeft'],
+        ['Ctrl+Alt+Shift+Right', 'ArrowRight'],
+        ['Ctrl+Alt+Shift+Up', 'ArrowUp'],
+        ['Ctrl+Alt+Shift+Down', 'ArrowDown'],
+      ] as const) {
+        const result = resolveCombo(input);
+        expect(result, `"${input}" must resolve, got: ${String(result)}`).toBeInstanceOf(Array);
+        const keys = result as KeyStroke[];
+        expect(keys[keys.length - 1]).toMatchObject({ code: expectedCode, isModifier: false });
+        expect(keys.filter((k) => k.isModifier)).toHaveLength(keys.length - 1);
+      }
+    });
+  });
 });
 
 describe('parseImportToml', () => {
@@ -248,5 +286,30 @@ desc = "剪切"
     expect(result.groups[0].shortcuts[0].description).toBe('保存文件');
     expect(result.groups[0].shortcuts[1].description).toBe('剪切');
     expect(result.groups[0].shortcuts[1].combo).toHaveLength(2);
+  });
+
+  // 回归:AI 生成的 Grasshopper 快捷键用 Alt+Left 这类英文方向名,
+  // 旧解析器整条 combo 报「无法识别的按键」,导致整组导入失败。
+  it('parses Grasshopper-style arrow-key combos (AI output regression)', () => {
+    const toml = `[[groups]]
+name = "Grasshopper"
+
+[[groups.shortcuts]]
+combo = "Alt+Left"
+desc = "平移画布"
+
+[[groups.shortcuts]]
+combo = "Ctrl+Alt+Shift+Up"
+desc = "放大视图"
+`;
+    const result = parseImportToml(toml);
+    expect(result.errors, `unexpected errors: ${result.errors.join(' | ')}`).toHaveLength(0);
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0].name).toBe('Grasshopper');
+    expect(result.groups[0].shortcuts).toHaveLength(2);
+    expect(result.groups[0].shortcuts[0].combo).toHaveLength(2);
+    expect(result.groups[0].shortcuts[0].combo[1]).toMatchObject({ code: 'ArrowLeft', label: '←' });
+    expect(result.groups[0].shortcuts[1].combo).toHaveLength(4);
+    expect(result.groups[0].shortcuts[1].combo[3]).toMatchObject({ code: 'ArrowUp', label: '↑' });
   });
 });

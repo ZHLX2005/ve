@@ -54,12 +54,12 @@ const FORMAT_PROMPT = `你是一个快捷键数据生成助手。根据用户需
 
 # === 主键写法(大小写不敏感) ===
 # 字母: A-Z     数字: 0-9     功能键: F1-F12
-# 方向: ↑ ↓ ← →
+# 方向: ↑ ↓ ← → —— 必须写箭头符号,禁止写英文名 Left/Right/Up/Down,也不要写 ArrowUp 这类 code 名
 # 符号: - = [ ] ; ' , . / \` 以及反斜杠(写法见下方"字符串转义")
 # 特殊: Enter Esc Tab Space Backspace
 # 导航: Insert(Ins) Home PageUp(PgUp) Delete(Del) End PageDown(PgDn)
 #       └ 括号内是等价简写,两种都能识别
-# ⚠️ 以上就是全部可用按键。不在这个清单里的名字一律报"无法识别的按键"。
+# ⚠️ 优先使用上表写法,不要发明清单外的名字。
 
 # === 字符串转义(TOML 双引号字符串规则) ===
 # 在 combo / desc / condition 的双引号内,这两个字符必须转义:
@@ -81,6 +81,8 @@ const FORMAT_PROMPT = `你是一个快捷键数据生成助手。根据用户需
 #     错 Minus    → 对 -
 #     错 Equal    → 对 =
 #     错 Numpad1  → 小键盘不支持,改用主键区数字 1
+#     错 Left / Right / Up / Down → 对 ← / → / ↑ / ↓(方向键必须用箭头符号)
+#     错 ArrowLeft / ArrowUp 等   → 对 ← / ↑
 # - 不要把 + 键本身放进 combo —— + 是分隔符,无法转义。
 #   需要表达 "Alt+Shift 加上加号键" 时,请改用它在主键行的符号名 =
 #   (US 布局下 + 是 Shift+= ),例:combo = "Alt+Shift+="
@@ -205,7 +207,7 @@ condition = "US 布局下 + 是 Shift+= ,所以这里写 ="
 
 # === 易错点(必须避免) ===
 # 1. combo 只写修饰键 → "Ctrl+Shift" 是非法,必须含主键
-# 2. 主键用全名 → 错:"Control+R" / "Digit1" / "Minus";对:"Ctrl+R" / "1" / "-"
+# 2. 主键用全名 → 错:"Control+R" / "Digit1" / "Minus" / "ArrowLeft";对:"Ctrl+R" / "1" / "-" / "←"
 # 3. 顺序不规范 → 修饰键在前,主键在末尾,例:"Ctrl+Shift+P" 而不是 "P+Ctrl+Shift"
 # 4. 出现未知字段 → 每个 [[groups.shortcuts]] 只允许 combo / desc / condition
 # 5. 缩进/引号混乱 → name 与 desc 一律用双引号包裹

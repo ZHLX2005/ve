@@ -27,6 +27,9 @@ export interface ImportParseResult {
 // Only covers labels that a user might type in an import file.
 // 导航簇同时收两种写法:KeyboardEvent.code 原名(PageUp)和键盘上的简写(PgUp),
 // 因为用户手写 TOML 时两种都会用,而 labelFor() 最终会归一到 LABEL_MAP 的标签。
+// 方向键同理:AI 生成的 TOML 经常把方向键写成英文名(Alt+Left / ArrowUp 等),
+// 这里把短名(Up/Down/Left/Right)和 KeyboardEvent.code 原名(ArrowXxx)都收进来,
+// 统一归一到 ArrowXxx,避免整条 combo 报「无法识别的按键」。
 const LABEL_REVERSE: Record<string, string> = {
   'Ctrl': 'ControlLeft',
   'Shift': 'ShiftLeft',
@@ -40,6 +43,14 @@ const LABEL_REVERSE: Record<string, string> = {
   '↓': 'ArrowDown',
   '←': 'ArrowLeft',
   '→': 'ArrowRight',
+  'Up': 'ArrowUp',
+  'Down': 'ArrowDown',
+  'Left': 'ArrowLeft',
+  'Right': 'ArrowRight',
+  'ArrowUp': 'ArrowUp',
+  'ArrowDown': 'ArrowDown',
+  'ArrowLeft': 'ArrowLeft',
+  'ArrowRight': 'ArrowRight',
   'Backspace': 'Backspace',
   'Delete': 'Delete',
   'Del': 'Delete',
