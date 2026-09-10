@@ -16,12 +16,15 @@ import type {
   KvListArgs,
   KvListResponse,
   KvSetArgs,
+  KvSetVisibilityArgs,
   KvGetArgs,
   KvDeleteArgs,
   KvTagCount,
   KvVersionInfo,
   KvDuplicateArgs,
   KvDuplicateResponse,
+  KvPublicGetArgs,
+  KvPublicItem,
 } from './types';
 
 export { ApiError } from '../base';
@@ -30,12 +33,15 @@ export type {
   KvListResponse,
   KvListArgs,
   KvSetArgs,
+  KvSetVisibilityArgs,
   KvGetArgs,
   KvDeleteArgs,
   KvTagCount,
   KvVersionInfo,
   KvDuplicateArgs,
   KvDuplicateResponse,
+  KvPublicGetArgs,
+  KvPublicItem,
 } from './types';
 
 export class KvV1Service extends HttpService {
@@ -116,6 +122,47 @@ export class KvV1Service extends HttpService {
     };
     if (args.sourceGroupId !== undefined && args.sourceGroupId > 0) body.sourceGroupId = args.sourceGroupId;
     return this.reqPost<KvDuplicateResponse>(`/${encodeURIComponent(args.key)}/duplicate`, body);
+  }
+
+  /** POST /kv/:key/visibility —— 切换可见性(write+)。独立于 Set,避免普通覆盖写
+   *  把 public 静默打回 private(后端 Set 的 visibility *string 行为)。审计写入
+   *  `set_public` / `set_private`。 */
+  async setVisibility(args: KvSetVisibilityArgs): Promise<void> {
+    const body: { visibility: 'public' | 'private'; groupId?: number } = {
+      visibility: args.visibility,
+    };
+    if (args.groupId !== undefined && args.groupId > 0) body.groupId = args.groupId;
+    await this.reqPost(`/${encodeURIComponent(args.key)}/visibility`, body);
+  }
+
+  /**
+   * 构造 KV 公开读 URL(供 UI 「复制公开链接」按钮调用)。不发起请求,纯字符串拼接。
+   *
+   * 后端契约(SPEC §3):`GET /api/v1/kv/public/:key?groupId=<必填>`,无鉴权,
+   * 仅放行 `visibility='public'` 且未过期的行。`groupId` 必填是必须的——key 只
+   * 在组内唯一(`UNIQUE(group_id, key)`),跨组可能撞名。
+   *
+   * 返回完整 URL(`window.location.origin` 兜底,SSR/单元测试环境没有 location 时
+   * 退到空字符串)。调用方拿到后直接 `navigator.clipboard.writeText`。
+   */
+  getPublicUrl(args: { key: string; groupId: number }): string {
+    const key = encodeURIComponent(args.key);
+    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
+    return `${origin}${apiPaths.kvV1}/public/${key}?groupId=${args.groupId}`;
+  }
+
+  /**
+   * 匿名公开读 `GET /kv/public/:key?groupId=<必填>`。
+   * 不带 JWT(走无鉴权公开读 Controller);仅放行 `visibility='public'` 且未过期。
+   * 失败(404 / 50 / 其他)按 ApiError 抛出,调用方用 try/catch 接管。
+   *
+   * 与 `get` 的关键区别:`get` 走组内 RBAC 通道需 Bearer + read+;`getPublic`
+   * 任何人(匿名)都能读,但只能读 public 行。这是「分享 URL」场景的主力方法
+   * —— 比如 github-show 接收 `?groupId=42&key=...` 公开链接,直接拉别人分享的项目列表。
+   */
+  async getPublic(args: KvPublicGetArgs): Promise<KvPublicItem> {
+    const qs = `?groupId=${args.groupId}`;
+    return this.reqGet<KvPublicItem>(`/public/${encodeURIComponent(args.key)}${qs}`);
   }
 }
 

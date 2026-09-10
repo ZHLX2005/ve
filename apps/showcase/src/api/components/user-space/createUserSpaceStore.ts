@@ -38,6 +38,7 @@ import type {
   KvVersionView,
   KvTagCount,
   KvEditorPayload,
+  KvSetVisibilityArgs,
   UserSpaceStore,
   ShortcutsBlob,
   FileView,
@@ -90,7 +91,7 @@ function toGroupSummary(input: {
   };
 }
 
-function toKvView(kv: { key: string; value: string; expires_at: string; groupId: number; groupName: string; myRole: KvView['myRole']; tags?: string[] }): KvView {
+function toKvView(kv: { key: string; value: string; expires_at: string; groupId: number; groupName: string; myRole: KvView['myRole']; tags?: string[]; visibility?: 'public' | 'private' }): KvView {
   return {
     key: kv.key,
     value: kv.value,
@@ -101,6 +102,8 @@ function toKvView(kv: { key: string; value: string; expires_at: string; groupId:
     groupName: kv.groupName,
     myRole: kv.myRole,
     expiresAt: kv.expires_at,
+    // 老后端不返回 visibility → 兜底 private,UI 行为与旧版一致(无公开链接按钮)。
+    visibility: kv.visibility ?? 'private',
   };
 }
 
@@ -348,12 +351,27 @@ export function createUserSpaceStore(): UserSpaceStore {
 
   async function createKv(groupId: number, args: KvEditorPayload): Promise<void> {
     requireAuth();
-    await kvV1Service.set({ key: args.key, value: args.value, ttl: args.ttl, tags: args.tags, groupId });
+    await kvV1Service.set({
+      key: args.key,
+      value: args.value,
+      ttl: args.ttl,
+      tags: args.tags,
+      groupId,
+      visibility: args.visibility,
+    });
   }
 
   async function updateKv(groupId: number, args: KvEditorPayload): Promise<void> {
     requireAuth();
-    await kvV1Service.set({ key: args.key, value: args.value, ttl: args.ttl, tags: args.tags, groupId });
+    await kvV1Service.set({
+      key: args.key,
+      value: args.value,
+      ttl: args.ttl,
+      tags: args.tags,
+      groupId,
+      // args.visibility 省略时 = 不带 visibility 字段 → 后端保留现有可见态(防覆盖写把 public 打回 private)
+      visibility: args.visibility,
+    });
   }
 
   async function deleteKv(groupId: number, key: string): Promise<void> {
@@ -396,6 +414,17 @@ export function createUserSpaceStore(): UserSpaceStore {
   async function duplicateKv(args: KvDuplicateArgs): Promise<KvDuplicateResponse> {
     requireAuth();
     return kvV1Service.duplicate(args);
+  }
+
+  /** 切换 KV 可见性(独立于 Set,审计 set_public/set_private)。write+。 */
+  async function setKvVisibility(args: KvSetVisibilityArgs): Promise<void> {
+    requireAuth();
+    await kvV1Service.setVisibility(args);
+  }
+
+  /** 构造公开读完整 URL(`window.location.origin + /api/v1/kv/public/:key?groupId=`)。不发起请求。 */
+  function getKvPublicUrl(args: { key: string; groupId: number }): string {
+    return kvV1Service.getPublicUrl(args);
   }
 
   // ── 文件 CRUD ──────────────────────────────────
@@ -623,6 +652,8 @@ export function createUserSpaceStore(): UserSpaceStore {
     listKvVersions,
     restoreKv,
     duplicateKv,
+    setKvVisibility,
+    getKvPublicUrl,
     uploadFile,
     uploadFileChunked,
     listFiles,

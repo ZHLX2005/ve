@@ -9,12 +9,12 @@
 
 import type { GroupRole } from '../../services/groupV1/types';
 import type { DefaultGroupInfo } from '../../services/userV1/types';
-import type { KvDuplicateArgs, KvDuplicateResponse, KvTagCount } from '../../services/kvV1/types';
+import type { KvDuplicateArgs, KvDuplicateResponse, KvSetVisibilityArgs, KvTagCount } from '../../services/kvV1/types';
 import type { FileAccessLevel, FileDuplicateArgs, FileDuplicateResponse, FileThumbnail } from '../../services/fileV1/types';
 
 export type { GroupRole };
 export type { DefaultGroupInfo };
-export type { KvDuplicateArgs, KvDuplicateResponse, KvTagCount };
+export type { KvDuplicateArgs, KvDuplicateResponse, KvSetVisibilityArgs, KvTagCount };
 export type { FileAccessLevel, FileDuplicateArgs, FileDuplicateResponse, FileThumbnail };
 
 export interface GroupSummary {
@@ -61,6 +61,11 @@ export interface KvView {
   groupName: string;
   myRole: GroupRole;
   expiresAt: string;
+  /**
+   * 可见性。`'public'` 允许匿名经专用公开读接口读;`'private'` 仅组内成员可见。
+   * 后端老版本可能不返回 → store 兜底为 `'private'`,UI 行为与旧版一致。
+   */
+  visibility: 'public' | 'private';
 }
 
 export interface KvListResult {
@@ -145,6 +150,11 @@ export interface KvEditorPayload {
   tags: string[];
   /** 秒;0=永久 */
   ttl: number;
+  /**
+   * 可见性。省略 = 沿用后端已有值(避免覆盖写把 public 静默打回 private)。
+   * 想改可见性请走 `setKvVisibility` 专用端点。
+   */
+  visibility?: 'public' | 'private';
 }
 
 /** 三视图模式:only one of Overview / Members / Invitations / Inventory / Files */
@@ -194,6 +204,10 @@ export interface UserSpaceStore {
   restoreKv(groupId: number, key: string, version: number): Promise<void>;
   /** 跨组复制 KV(source read+ → target write+)。targetGroupId 必须 ≥ 1。 */
   duplicateKv(args: KvDuplicateArgs): Promise<KvDuplicateResponse>;
+  /** 切换可见性(独立于 Set,避免普通覆盖写把 public 静默打回 private)。write+。 */
+  setKvVisibility(args: KvSetVisibilityArgs): Promise<void>;
+  /** 构造公开读完整 URL(`/api/v1/kv/public/:key?groupId=`)。不发起请求。 */
+  getKvPublicUrl(args: { key: string; groupId: number }): string;
 
   // ── 文件(本期为公开图床) ─────────────────────────
   // upload 固定 accessLevel='public';tags replace 语义。displayName 由后端

@@ -2,6 +2,10 @@
 //
 // 权限:myRole ∈ {owner,admin,writer} 显示写操作;reader 只读。删除走行内 hover 确认。
 // 行 actions 默认隐藏,hover 整行才显示(避免视觉噪音)。
+//
+// 可见性(2026-08-30 起):KvView.visibility = 'public' 时行内额外出
+// 「🔗」按钮 → 调用 store.getKvPublicUrl + navigator.clipboard 复制公开链接,
+// 顶部 toast 提示成功。private 行不显示(按 contract 不应有公开读入口)。
 
 import type { KvListResult, KvTagCount, KvView } from '@api/components/user-space';
 import { hasMinRole } from '@api/components/user-space';
@@ -23,6 +27,8 @@ export interface InventoryProps {
   onDelete: (item: KvView) => void;
   /** 复制到其他工作空间(父级开 DuplicateKvModal);仅 canWrite 显示按钮。 */
   onDuplicate: (item: KvView) => void;
+  /** 复制公开链接成功时的回调(父级出顶部 toast)。 */
+  onCopyPublicLink: (item: KvView) => void;
   onReload: () => Promise<void>;
 }
 
@@ -35,7 +41,7 @@ function formatReplacedAt(s: string | null | undefined): string {
 }
 
 export default function Inventory(props: InventoryProps) {
-  const { group, kv, loading, error, saving, page, pageSize, selectedTag, tags, onPageChange, onTagChange, onCreate, onEdit, onDelete, onDuplicate, onReload } = props;
+  const { group, kv, loading, error, saving, page, pageSize, selectedTag, tags, onPageChange, onTagChange, onCreate, onEdit, onDelete, onDuplicate, onCopyPublicLink, onReload } = props;
   const canWrite = hasMinRole(group.myRole, 'writer');
 
   const totalPages = kv ? Math.max(1, Math.ceil(kv.total / pageSize)) : 1;
@@ -78,10 +84,11 @@ export default function Inventory(props: InventoryProps) {
           <table className="sl-us-table">
             <thead>
               <tr>
-                <th style={{ width: '22%' }}>Key</th>
+                <th style={{ width: '24%' }}>Key</th>
                 <th>Value</th>
-                <th style={{ width: '18%' }}>Tags</th>
-                <th style={{ width: '12%' }}>过期</th>
+                <th style={{ width: '16%' }}>Tags</th>
+                <th style={{ width: '10%' }}>可见性</th>
+                <th style={{ width: '10%' }}>过期</th>
                 <th style={{ width: 1 }} />
               </tr>
             </thead>
@@ -104,11 +111,27 @@ export default function Inventory(props: InventoryProps) {
                         ))
                     }
                   </td>
+                  <td>
+                    {item.visibility === 'public'
+                      ? <span className="sl-us-chip sl-us-chip--public" title="匿名可经 /kv/public/:key?groupId= 读取">🌐 公开</span>
+                      : <span className="sl-us-chip sl-us-chip--private" title="仅组内成员可见">🔒 私有</span>
+                    }
+                  </td>
                   <td className="sl-us-table__cell-faint sl-us-table__cell-mono">
                     {item.expiresAt ? formatReplacedAt(item.expiresAt) : '—'}
                   </td>
                   <td>
                     <div className="sl-us-table__row-actions">
+                      {item.visibility === 'public' && (
+                        <button
+                          className="sl-us-btn sl-us-btn--ghost sl-us-btn--icon-sm"
+                          onClick={() => onCopyPublicLink(item)}
+                          title="复制公开读链接"
+                          aria-label="复制公开链接"
+                        >
+                          🔗
+                        </button>
+                      )}
                       <button
                         className="sl-us-btn sl-us-btn--ghost sl-us-btn--icon-sm"
                         onClick={() => onEdit(item)}

@@ -396,7 +396,7 @@ export default function UserSpace() {
   }
 
   // ── KV CRUD handlers ─────────────────────────────
-  async function handleCreateKv(payload: { key: string; value: string; tags: string[]; ttl: number }): Promise<void> {
+  async function handleCreateKv(payload: { key: string; value: string; tags: string[]; ttl: number; visibility?: 'public' | 'private' }): Promise<void> {
     if (!currentSelected) return;
     await withError(async () => {
       await store.createKv(currentSelected, payload);
@@ -406,7 +406,7 @@ export default function UserSpace() {
     });
   }
 
-  async function handleUpdateKv(payload: { key: string; value: string; tags: string[]; ttl: number }): Promise<void> {
+  async function handleUpdateKv(payload: { key: string; value: string; tags: string[]; ttl: number; visibility?: 'public' | 'private' }): Promise<void> {
     if (!currentSelected) return;
     await withError(async () => {
       await store.updateKv(currentSelected, payload);
@@ -464,6 +464,35 @@ export default function UserSpace() {
       await loadKv(kvPage, kvTag);
     });
     return { newKey };
+  }
+
+  /**
+   * 复制 KV 公开读链接到剪贴板(供 Inventory 行内「🔗」按钮 / 编辑弹窗内按钮调用)。
+   * 公开链接:`{origin}/api/v1/kv/public/{key}?groupId={groupId}`。
+   * 不发起请求——纯字符串拼接 + navigator.clipboard.writeText,失败降级
+   * execCommand(老浏览器 / 非安全上下文)。
+   * 成功 → 顶部 toast「已复制公开链接…」(3s 自动消失,复用 duplicateToast 状态机)。
+   */
+  async function handleCopyPublicLink(item: KvView): Promise<void> {
+    if (!currentSelected) return;
+    const url = store.getKvPublicUrl({ key: item.key, groupId: currentSelected });
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setDuplicateToast(`已复制公开链接:${item.key}`);
+    } catch {
+      setActionError('复制公开链接失败,请手动复制');
+    }
   }
 
   // ── 文件 CRUD handlers ────────────────────────
@@ -787,6 +816,7 @@ export default function UserSpace() {
                   onEdit={(item) => { setKvEditorMode('edit'); setKvEditorInit(item); setKvEditorOpen(true); }}
                   onDelete={handleDeleteKv}
                   onDuplicate={(item) => { setDuplicateSource(item); setDuplicateOpen(true); }}
+                  onCopyPublicLink={(item) => void handleCopyPublicLink(item)}
                   onReload={() => loadKv(kvPage, kvTag)}
                 />
                 <KvEditorModal
@@ -797,6 +827,9 @@ export default function UserSpace() {
                   canWrite={canWrite}
                   versions={kvVersions}
                   versionsLoading={kvVersionsLoading}
+                  groupId={currentSelected}
+                  groupName={selectedGroup.name}
+                  getPublicUrl={(args) => store.getKvPublicUrl(args)}
                   onRestoreVersion={(v) => void handleRestoreKv(v)}
                   onSave={kvEditorMode === 'create' ? handleCreateKv : handleUpdateKv}
                   onClose={() => setKvEditorOpen(false)}

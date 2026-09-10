@@ -393,6 +393,9 @@
 .sl-us-chip--admin   { background: #dbeafe; color: #1e40af; }
 .sl-us-chip--writer  { background: #dcfce7; color: #166534; }
 .sl-us-chip--reader  { background: var(--hover); color: var(--fg-2); }
+/* KV visibility(2026-08-30 起) */
+.sl-us-chip--public  { background: #e0f2fe; color: #075985; }
+.sl-us-chip--private { background: var(--hover); color: var(--fg-2); }
 .sl-us-chip--tag {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 10.5px;
@@ -695,7 +698,25 @@
 .sl-us-field { display: flex; flex-direction: column; gap: 4px; }
 .sl-us-field__label { font-size: 11px; font-weight: 500; color: var(--fg-2); }
 .sl-us-field__hint { font-size: 11px; color: var(--fg-3); }
+.sl-us-field__hint--ok { color: #166534; }
 .sl-us-field__row { display: flex; gap: 6px; }
+/* KV visibility radio 行(KvEditorModal 内) */
+.sl-us-radio-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.sl-us-radio { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; cursor: pointer; }
+.sl-us-radio input[type="radio"] { margin: 0; cursor: pointer; }
+.sl-us-radio input[type="radio"][disabled] + span { color: var(--fg-3); cursor: not-allowed; }
+/* 公开链接区块 —— visibility='public' 且编辑模式时显示 */
+.sl-us-field__public-link {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 2px;
+}
+.sl-us-field__public-link .sl-us-field__hint {
+  flex-basis: 100%;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  word-break: break-all;
+  opacity: 0.75;
+}
 
 /* ── 分片上传进度(UploadFileModal 内) ────────── */
 .sl-us-progress { display: flex; flex-direction: column; gap: 6px; }

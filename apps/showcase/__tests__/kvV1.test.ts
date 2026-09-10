@@ -223,4 +223,108 @@ describe('kvV1 service (throw model)', () => {
 
     await expect(kvV1Service.get({ key: 'missing' })).rejects.toMatchObject({ code: 50 });
   });
+
+  describe('setVisibility', () => {
+    it('POSTs /kv/:key/visibility with visibility + groupId', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(mockJSON(200, { code: 0, message: 'ok' }));
+      global.fetch = mockFetch;
+
+      await kvV1Service.setVisibility({ key: 'site-banner', visibility: 'public', groupId: 42 });
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toBe('/api/v1/kv/site-banner/visibility');
+      const init = mockFetch.mock.calls[0][1] as RequestInit;
+      expect(init.method).toBe('POST');
+      expect(init.headers).toMatchObject({ Authorization: 'Bearer jwt-xyz' });
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(body).toEqual({ visibility: 'public', groupId: 42 });
+    });
+
+    it('omits groupId when 0 or undefined', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(mockJSON(200, { code: 0, message: 'ok' }));
+      global.fetch = mockFetch;
+
+      await kvV1Service.setVisibility({ key: 'k', visibility: 'private' });
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      expect(body).toEqual({ visibility: 'private' });
+      expect(body).not.toHaveProperty('groupId');
+    });
+
+    it('encodes key with special characters', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(mockJSON(200, { code: 0, message: 'ok' }));
+      global.fetch = mockFetch;
+
+      await kvV1Service.setVisibility({ key: 'has space/slash', visibility: 'public', groupId: 1 });
+      expect(mockFetch.mock.calls[0][0]).toBe('/api/v1/kv/has%20space%2Fslash/visibility');
+    });
+  });
+
+  describe('getPublicUrl', () => {
+    it('builds /api/v1/kv/public/:key with groupId query using window.location.origin', () => {
+      // jsdom 默认 origin 是 'http://localhost:3000'(vitest 默认),但这里直接 stub
+      const originalLocation = window.location;
+      delete (window as { location?: unknown }).location;
+      (window as unknown as { location: { origin: string } }).location = { origin: 'https://example.com' };
+
+      try {
+        const url = kvV1Service.getPublicUrl({ key: 'site-banner', groupId: 42 });
+        expect(url).toBe('https://example.com/api/v1/kv/public/site-banner?groupId=42');
+      } finally {
+        (window as unknown as { location: Location }).location = originalLocation;
+      }
+    });
+
+    it('encodes key with special characters', () => {
+      const url = kvV1Service.getPublicUrl({ key: 'a b/c', groupId: 1 });
+      expect(url).toMatch(/\/api\/v1\/kv\/public\/a%20b%2Fc\?groupId=1$/);
+    });
+  });
+
+  describe('getPublic', () => {
+    it('GETs /kv/public/:key with groupId query and returns the public item', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        mockJSON(200, {
+          code: 0,
+          data: {
+            key: 'github-show',
+            value: '{"meta":{"schemaVersion":"1.2.0"},"columns":[],"rows":[]}',
+            expires_at: '',
+            groupId: 42,
+            groupName: '公开示例',
+            visibility: 'public',
+            currentVersion: 7,
+            tags: ['github-show'],
+          },
+        }),
+      );
+      global.fetch = mockFetch;
+
+      const item = await kvV1Service.getPublic({ key: 'github-show', groupId: 42 });
+      expect(item.key).toBe('github-show');
+      expect(item.groupId).toBe(42);
+      expect(item.visibility).toBe('public');
+      expect(item.currentVersion).toBe(7);
+      expect(mockFetch.mock.calls[0][0]).toBe('/api/v1/kv/public/github-show?groupId=42');
+      expect((mockFetch.mock.calls[0][1] as RequestInit).method).toBe('GET');
+    });
+
+    it('encodes key with special characters', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        mockJSON(200, { code: 0, data: { key: 'a b/c', value: '', groupId: 1, groupName: '', visibility: 'public', currentVersion: 0 } }),
+      );
+      global.fetch = mockFetch;
+
+      await kvV1Service.getPublic({ key: 'a b/c', groupId: 1 });
+      expect(mockFetch.mock.calls[0][0]).toBe('/api/v1/kv/public/a%20b%2Fc?groupId=1');
+    });
+
+    it('throws ApiError on code 50 (key not found / not public)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        mockJSON(200, { code: 50, data: null, message: 'key not found' }),
+      );
+      global.fetch = mockFetch;
+
+      await expect(kvV1Service.getPublic({ key: 'private-only', groupId: 42 })).rejects.toMatchObject({ code: 50 });
+    });
+  });
 });
