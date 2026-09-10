@@ -1,14 +1,17 @@
 // src/components/GithubShowTable.tsx —— 编辑视图的数据库表格本体。
 //
-// 列:GitHub 链接 | 项目名 | 亮点 | 启发 | 线上地址(可选) | 自定义列 | 操作
-// - 链接列(GitHub / 线上地址 / 自定义链接列)用 LinkCell:合法即点击跳转
-// - 文本单元格内联编辑;亮点/启发用自动撑高 textarea;删除走两步确认
+// 列:GitHub 链接 | 项目名 | 亮点 | 启发 | 线上地址(可选文本列) | 自定义列 | 操作
+// - 链接列(GitHub)用 LinkCell:合法即点击跳转,可编辑
+// - 线上地址是可选文本列:可写解释文字,含 http 自动可点,可修改可清空
+// - 自定义列:text 用自动撑高 textarea(含 http 渲染在展示/导出);multi-select 用 chip 编辑器
+// - 删除行走两步确认
 // 样式统一 sl-gh- 前缀 + --sl-* token。
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { GithubShowColumn, GithubShowRow } from '@api/components/github-show/types';
 import { deriveRepoName, displayLinkText } from '../utils/repo';
 import LinkCell from './LinkCell';
+import MultiSelectCell from './MultiSelectCell';
 
 export interface GithubShowTableProps {
   rows: GithubShowRow[];
@@ -114,15 +117,15 @@ function GithubShowTable({
         <div className="sl-gh-cell sl-gh-cell--insights" role="columnheader" title="做这件事的收获 / 可复用的思路(开发者自填)">
           启发
         </div>
-        <div className="sl-gh-cell sl-gh-cell--demo" role="columnheader" title="可选:线上地址 / 演示链接,点击可打开">
+        <div className="sl-gh-cell sl-gh-cell--demo" role="columnheader" title="可选:线上地址 / 演示链接,可写说明,含 http 自动可点">
           线上地址
         </div>
         {columns.map((c) => (
           <div
-            className={`sl-gh-cell sl-gh-cell--custom${c.type === 'link' ? ' is-link' : ''}`}
+            className={`sl-gh-cell sl-gh-cell--custom${c.type === 'multi-select' ? ' is-multi' : ''}`}
             role="columnheader"
             key={c.id}
-            title={c.type === 'link' ? `链接列:${c.title}(点击可打开)` : c.title}
+            title={`${c.title}(${c.type === 'multi-select' ? '多选' : '文本'})`}
           >
             {c.title}
           </div>
@@ -178,22 +181,19 @@ function GithubShowTable({
               />
             </div>
             <div className="sl-gh-cell sl-gh-cell--demo" role="cell">
-              <LinkCell
+              <AutoTextarea
                 value={row.demoUrl}
-                placeholder="可选:线上地址…"
+                placeholder="可选:线上地址 / 说明,含 http 自动可点…"
                 ariaLabel="线上地址"
-                displayText={displayLinkText(row.demoUrl)}
-                onCommit={(v) => onUpdateRow(row.id, { demoUrl: v })}
+                onChange={(v) => onUpdateRow(row.id, { demoUrl: v })}
               />
             </div>
             {columns.map((c) => (
               <div className="sl-gh-cell sl-gh-cell--custom" role="cell" key={c.id}>
-                {c.type === 'link' ? (
-                  <LinkCell
+                {c.type === 'multi-select' ? (
+                  <MultiSelectCell
                     value={row.values[c.id] ?? ''}
-                    placeholder="https://…"
                     ariaLabel={c.title}
-                    displayText={displayLinkText(row.values[c.id] ?? '')}
                     onCommit={(v) => onSetCellValue(row.id, c.id, v)}
                   />
                 ) : (

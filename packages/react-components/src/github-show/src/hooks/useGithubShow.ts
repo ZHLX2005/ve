@@ -189,7 +189,7 @@ export function useGithubShow() {
   // ── 自定义列 ──────────────────────────────────────────
 
   const addColumn = useCallback(
-    (title: string, type: 'text' | 'link'): string => {
+    (title: string, type: 'text' | 'multi-select'): string => {
       const now = Date.now();
       const colId = freshId();
       mutate((prev) => ({

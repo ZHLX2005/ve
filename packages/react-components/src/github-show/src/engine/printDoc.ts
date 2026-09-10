@@ -7,6 +7,8 @@
 
 import type { GithubShowDoc } from '@api/components/github-show/types';
 import { computeStats } from './stats';
+import { splitTextWithLinks, toHref } from '../utils/repo';
+import { parseTags } from '../utils/tags';
 
 export interface PrintDocOptions {
   doc: GithubShowDoc;
@@ -51,6 +53,31 @@ function textCell(raw: string): string {
   return lines(v);
 }
 
+/**
+ * 富文本单元格:含 http(s) 的片段渲染为可点击链接,其余保留原文
+ * (线上地址 / 文本列可写说明文字,URL 自动可点)。
+ */
+function richTextCell(raw: string): string {
+  const v = raw.trim();
+  if (!v) return '<span class="dim">—</span>';
+  const parts = splitTextWithLinks(v);
+  return parts
+    .map((p) => {
+      if (p.url) return `<a href="${esc(toHref(p.url))}">${esc(p.url)}</a>`;
+      return lines(p.text ?? '');
+    })
+    .join('');
+}
+
+/** 多选单元格:JSON 数组解析后渲染为标签。 */
+function tagsCell(raw: string): string {
+  const tags = parseTags(raw);
+  if (tags.length === 0) return '<span class="dim">—</span>';
+  return tags
+    .map((t) => `<span class="ptag">${esc(t)}</span>`)
+    .join('');
+}
+
 const PRINT_CSS = `
 @page { size: A4; margin: 16mm 14mm; }
 * { box-sizing: border-box; }
@@ -67,6 +94,7 @@ th { background: #f9fafb; font-size: 11px; font-weight: 600; color: #374151; whi
 td.name { min-width: 96px; font-weight: 600; }
 a { color: #2563eb; text-decoration: none; word-break: break-all; }
 .dim { color: #9ca3af; }
+.ptag { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 8px; border: 1px solid #dbe3ee; border-radius: 999px; background: #f3f6fb; color: #374151; font-size: 11px; }
 tr { break-inside: avoid; }
 .footer { margin-top: 16px; font-size: 10px; color: #9ca3af; text-align: right; }
 `;
@@ -102,10 +130,10 @@ export function buildPrintParts(options: PrintDocOptions): PrintDocParts {
         `<td>${linkCell(r.repoUrl)}</td>`,
         `<td>${textCell(r.highlights)}</td>`,
         `<td>${textCell(r.insights)}</td>`,
-        `<td>${linkCell(r.demoUrl)}</td>`,
+        `<td>${richTextCell(r.demoUrl)}</td>`,
         ...doc.columns.map((c) => {
           const v = r.values[c.id] ?? '';
-          return `<td>${c.type === 'link' ? linkCell(v) : textCell(v)}</td>`;
+          return `<td>${c.type === 'multi-select' ? tagsCell(v) : richTextCell(v)}</td>`;
         }),
       ].join('');
       return `<tr>${cells}</tr>`;

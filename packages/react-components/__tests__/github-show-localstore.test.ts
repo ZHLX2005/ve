@@ -1,4 +1,4 @@
-// __tests__/github-show-localstore.test.ts —— 游客本地存储的读写与容错(v1.1.0)。
+// __tests__/github-show-localstore.test.ts —— 游客本地存储的读写与容错(v1.2.0)。
 
 // @vitest-environment jsdom
 
@@ -18,7 +18,7 @@ describe('LocalGithubShowStore', () => {
     const store = new LocalGithubShowStore();
     const doc = await store.load();
     expect(doc.rows).toEqual([]);
-    expect(doc.meta.schemaVersion).toBe('1.1.0');
+    expect(doc.meta.schemaVersion).toBe('1.2.0');
   });
 
   it('round-trips save/load', async () => {

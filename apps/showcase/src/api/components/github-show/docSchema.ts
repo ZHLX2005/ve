@@ -1,13 +1,13 @@
 // apps/showcase/src/api/components/github-show/docSchema.ts
 //
-// Zod 校验 GithubShowDoc 的 load / save 边界 + v1.0.0 → v1.1.0 迁移。
+// Zod 校验 GithubShowDoc 的 load / save 边界 + v1.0.0 / v1.1.0 → v1.2.0 迁移。
 // 防止 KV 里读到脏数据(手改 / 旧版本 / 部分写入)时把 UI 打崩。
 
 import { z } from 'zod';
 import type { GithubShowDoc } from './types';
-import { emptyDoc, migrateDocV100 } from './types';
+import { emptyDoc, migrateDocV100, migrateDocV110 } from './types';
 
-const rowV110Schema = z.object({
+const rowSchema = z.object({
   id: z.string().min(1),
   repoUrl: z.string(),
   name: z.string(),
@@ -22,6 +22,24 @@ const rowV110Schema = z.object({
 const columnSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
+  type: z.enum(['text', 'multi-select']),
+  createdAt: z.number(),
+});
+
+const docV120Schema = z.object({
+  meta: z.object({
+    schemaVersion: z.literal('1.2.0'),
+    createdAt: z.number(),
+    updatedAt: z.number(),
+    authorEmail: z.string(),
+  }),
+  columns: z.array(columnSchema),
+  rows: z.array(rowSchema),
+});
+
+const columnV110Schema = z.object({
+  id: z.string().min(1),
+  title: z.string(),
   type: z.enum(['text', 'link']),
   createdAt: z.number(),
 });
@@ -33,8 +51,8 @@ const docV110Schema = z.object({
     updatedAt: z.number(),
     authorEmail: z.string(),
   }),
-  columns: z.array(columnSchema),
-  rows: z.array(rowV110Schema),
+  columns: z.array(columnV110Schema),
+  rows: z.array(rowSchema),
 });
 
 const rowV100Schema = z.object({
@@ -59,13 +77,17 @@ const docV100Schema = z.object({
 
 /**
  * 解析 + 迁移一个未知的 KV 值。
- * - 合法 v1.1.0 → 原样返回
- * - 合法 v1.0.0 → 迁移到 v1.1.0
+ * - 合法 v1.2.0 → 原样返回
+ * - 合法 v1.1.0 → 迁移到 v1.2.0(link 列收敛为 text)
+ * - 合法 v1.0.0 → 迁移到 v1.2.0(补 demoUrl / values / columns)
  * - 其它(脏数据 / 非 JSON)→ 空文档兜底,不抛异常
  */
 export function parseDoc(raw: unknown): GithubShowDoc {
+  const v12 = docV120Schema.safeParse(raw);
+  if (v12.success) return v12.data;
+
   const v11 = docV110Schema.safeParse(raw);
-  if (v11.success) return v11.data;
+  if (v11.success) return migrateDocV110(v11.data);
 
   const v10 = docV100Schema.safeParse(raw);
   if (v10.success) return migrateDocV100(v10.data);

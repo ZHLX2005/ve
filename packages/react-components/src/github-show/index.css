@@ -198,6 +198,62 @@
   display: block;
 }
 
+/* 多选列单元格(chip 编辑器):已选标签 + 内联输入 */
+.sl-gh-multisel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.sl-gh-multisel:hover { background: var(--sl-color-surface, #fff); }
+.sl-gh-multisel:focus-within {
+  background: var(--sl-color-surface, #fff);
+  border-color: var(--sl-color-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.sl-gh-multisel__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  background: #f3f6fb;
+  color: #374151;
+  white-space: nowrap;
+}
+.sl-gh-multisel__x {
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  font-size: 13px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+}
+.sl-gh-multisel__x:hover { background: #e5e9f0; color: #dc2626; }
+.sl-gh-multisel__input {
+  flex: 1;
+  min-width: 60px;
+  font: inherit;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--sl-color-text, #1f2328);
+  outline: none;
+  padding: 3px 2px;
+}
+.sl-gh-multisel__input::placeholder { color: var(--sl-color-text-dim, #9ca3af); }
+
 /* URL 单元格:可点击链接(LinkCell)+ 编辑按钮 */
 .sl-gh-linkcell {
   display: flex;
@@ -237,8 +293,8 @@
   color: var(--sl-color-primary, #2563eb);
   border-color: var(--sl-color-primary, #2563eb);
 }
-.sl-gh-cell--custom.is-link {
-  /* 链接类自定义列:列头无额外元素 */
+.sl-gh-cell--custom.is-multi {
+  /* 多选类自定义列:列头无额外元素 */
 }
 
 /* 删除按钮:× → ? 两步确认 */
@@ -419,7 +475,7 @@
   border-radius: 999px;
   padding: 2px 8px;
 }
-.sl-gh-colmgr__type.is-link { color: var(--sl-color-primary, #2563eb); }
+.sl-gh-colmgr__type.is-multi { color: #7c3aed; }
 .sl-gh-colmgr__del {
   flex: none;
   width: 26px;
@@ -546,6 +602,22 @@
 .sl-gh-dtext {
   white-space: pre-wrap;
   word-break: break-word;
+}
+/* 多选标签(展示视图) */
+.sl-gh-dtags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sl-gh-dtag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 1px 9px;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  background: #f3f6fb;
+  color: #374151;
+  white-space: nowrap;
 }
 .sl-gh-dlink {
   color: var(--sl-color-primary, #2563eb);

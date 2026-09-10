@@ -4,7 +4,8 @@
 //   - 统计卡:项目总数 / 已填亮点 / 已填启发 / 内容完整度
 //   - ECharts:项目介绍充实度(分组柱状图)+ 亮点填写率(环形图)
 //   - 只读数据库表格:链接可点击跳转,列头可排序
-//   - 导出 PDF:把展示内容(含图表)生成自包含 HTML 走浏览器打印
+//   - 导出 PDF:展示内容(含图表)直接下载 .pdf(失败降级浏览器打印)
+// 渲染规则:文本列含 http 自动渲染链接;多选列渲染为标签;线上地址为可选文本列。
 
 import { useMemo, useState } from 'react';
 import type { GithubShowDoc } from '@api/components/github-show/types';
@@ -13,7 +14,8 @@ import { computeStats, contentChartData } from '../engine/stats';
 import { buildPrintHtml, buildPrintParts } from '../engine/printDoc';
 import { exportPdf } from '../engine/exportPdf';
 import { printHtml } from '../engine/print';
-import { deriveRepoName, displayLinkText, toHref } from '../utils/repo';
+import { deriveRepoName, displayLinkText, splitTextWithLinks, toHref } from '../utils/repo';
+import { parseTags } from '../utils/tags';
 
 export interface DisplayViewProps {
   doc: GithubShowDoc;
@@ -53,13 +55,44 @@ function RepoLink({ url, name }: { url: string; name: string }) {
   );
 }
 
-function PlainLink({ url }: { url: string }) {
-  const href = toHref(url);
-  if (!href) return <span className="sl-gh-dim">—</span>;
+/** 文本渲染:含 http(s) 自动切成可点击链接,其余保留原文(支持说明文字)。 */
+function RichText({ value }: { value: string }) {
+  const parts = splitTextWithLinks(value);
+  if (parts.length === 0) return <span className="sl-gh-dim">—</span>;
   return (
-    <a className="sl-gh-dlink" href={href} target="_blank" rel="noreferrer" title={url}>
-      {displayLinkText(url)}
-    </a>
+    <>
+      {parts.map((p, i) =>
+        p.url ? (
+          <a
+            key={i}
+            className="sl-gh-dlink"
+            href={toHref(p.url)}
+            target="_blank"
+            rel="noreferrer"
+            title={p.url}
+          >
+            {displayLinkText(p.url)}
+          </a>
+        ) : (
+          <span key={i}>{p.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/** 多选渲染:解析 JSON 数组并渲染为标签。 */
+function TagList({ value }: { value: string }) {
+  const tags = parseTags(value);
+  if (tags.length === 0) return <span className="sl-gh-dim">—</span>;
+  return (
+    <span className="sl-gh-dtags">
+      {tags.map((t) => (
+        <span className="sl-gh-dtag" key={t}>
+          {t}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -271,16 +304,16 @@ export default function DisplayView({ doc, onGoEdit }: DisplayViewProps) {
                 <td className="sl-gh-dtext">{row.highlights || <span className="sl-gh-dim">—</span>}</td>
                 <td className="sl-gh-dtext">{row.insights || <span className="sl-gh-dim">—</span>}</td>
                 <td>
-                  <PlainLink url={row.demoUrl} />
+                  {row.demoUrl ? <RichText value={row.demoUrl} /> : <span className="sl-gh-dim">—</span>}
                 </td>
                 {doc.columns.map((c) => {
                   const v = row.values[c.id] ?? '';
                   return (
                     <td key={c.id} className="sl-gh-dtext">
-                      {c.type === 'link' ? (
-                        <PlainLink url={v} />
+                      {c.type === 'multi-select' ? (
+                        <TagList value={v} />
                       ) : v ? (
-                        v
+                        <RichText value={v} />
                       ) : (
                         <span className="sl-gh-dim">—</span>
                       )}

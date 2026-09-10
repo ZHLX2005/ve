@@ -7,15 +7,18 @@ import { emptyDoc } from '@api/components/github-show/types';
 
 function sampleDoc() {
   const doc = emptyDoc('a@b.c', 1000);
-  doc.columns = [{ id: 'c1', title: '技术栈', type: 'text', createdAt: 2 }];
+  doc.columns = [
+    { id: 'c1', title: '技术栈', type: 'text', createdAt: 2 },
+    { id: 'c2', title: '标签', type: 'multi-select', createdAt: 3 },
+  ];
   doc.rows.push({
     id: 'r1',
     repoUrl: 'https://github.com/vuejs/core',
     name: 'vuejs/core',
     highlights: '响应式系统\n组合式 API',
     insights: '小而正交的 API 设计',
-    demoUrl: 'https://vuejs.org/',
-    values: { c1: 'TypeScript' },
+    demoUrl: '演示站点 https://vuejs.org/（官方文档）',
+    values: { c1: 'TypeScript 与 https://www.typescriptlang.org/', c2: '["Vue","TS"]' },
     createdAt: 1,
     updatedAt: 1,
   });
@@ -32,9 +35,32 @@ describe('buildPrintHtml', () => {
     expect(html).toContain('https://github.com/vuejs/core');
     expect(html).toContain('vuejs.org');
     expect(html).toContain('技术栈');
-    expect(html).toContain('TypeScript');
+    expect(html).toContain('TypeScript 与 ');
     expect(html).toContain('<br>'); // 多行亮点分行
     expect(html).toContain('共 1 个项目');
+  });
+
+  it('renders demo url text with explanation and link', () => {
+    const html = buildPrintHtml({ doc: sampleDoc() });
+    // 说明文字保留
+    expect(html).toContain('演示站点 ');
+    // URL 渲染为可点击链接
+    expect(html).toContain('<a href="https://vuejs.org/">https://vuejs.org/</a>');
+    // 中文括号不被吸进链接
+    expect(html).toContain('（官方文档）');
+  });
+
+  it('renders text column url as clickable link', () => {
+    const html = buildPrintHtml({ doc: sampleDoc() });
+    expect(html).toContain(
+      '<a href="https://www.typescriptlang.org/">https://www.typescriptlang.org/</a>',
+    );
+  });
+
+  it('renders multi-select column as tags', () => {
+    const html = buildPrintHtml({ doc: sampleDoc() });
+    expect(html).toContain('<span class="ptag">Vue</span>');
+    expect(html).toContain('<span class="ptag">TS</span>');
   });
 
   it('embeds chart data URL when provided', () => {

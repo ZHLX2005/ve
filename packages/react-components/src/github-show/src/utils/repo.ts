@@ -66,3 +66,48 @@ export function displayLinkText(raw: string, maxLen = 48): string {
   if (url.length <= maxLen) return url;
   return `${url.slice(0, maxLen - 1)}…`;
 }
+
+// 通用 http(s) URL 片段匹配:到空白 / 引号 / 括号 / 中文标点为止。
+// 中文等非 URL 字符可能被贪婪吸入,提取后由 cleanUrlFragment 从尾部剥离。
+const URL_FRAGMENT_RE = /https?:\/\/[^\s<>"'{}[\]()（）「」『』【】《》，。、；：！？]*/gi;
+
+// URL 合法尾部字符(RFC 3986 unreserved/reserved 子集 + % 编码)
+const URL_CHAR_TAIL_RE = /[^A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
+
+/** 剥离 URL 片段的尾部杂质:中文/空格先剥,再剥半角标点。 */
+function cleanUrlFragment(raw: string): string {
+  let s = raw.replace(URL_CHAR_TAIL_RE, '');
+  s = s.replace(/[.,;:!?]+$/, '');
+  return s;
+}
+
+/** 从任意文本中提取第一个 http(s) URL;没有返回空串。 */
+export function findFirstUrl(raw: string): string {
+  URL_FRAGMENT_RE.lastIndex = 0;
+  const m = URL_FRAGMENT_RE.exec(raw ?? '');
+  return m ? cleanUrlFragment(m[0]) : '';
+}
+
+/**
+ * 把一段文本拆成「纯文本段」与「URL 段」的序列,供渲染层把 URL 渲染为可点击链接。
+ * 例:演示 https://a.b/c,说明 → [{text:'演示 '},{url:'https://a.b/c'},{text:',说明'}]
+ */
+export function splitTextWithLinks(
+  raw: string,
+): Array<{ text?: string; url?: string }> {
+  const value = raw ?? '';
+  if (!value) return [];
+  URL_FRAGMENT_RE.lastIndex = 0;
+  const parts: Array<{ text?: string; url?: string }> = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = URL_FRAGMENT_RE.exec(value)) !== null) {
+    if (m.index > last) parts.push({ text: value.slice(last, m.index) });
+    const url = cleanUrlFragment(m[0]);
+    if (url) parts.push({ url });
+    // 只前进到干净 URL 的末尾;被剥离的残留字符(中文/标点)留作后续文本段
+    last = m.index + url.length;
+  }
+  if (last < value.length) parts.push({ text: value.slice(last) });
+  return parts;
+}
