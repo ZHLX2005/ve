@@ -1,7 +1,7 @@
 // __tests__/github-show-print.test.ts —— 展示视图 PDF 导出 HTML 生成(纯函数)。
 
 import { describe, it, expect } from 'vitest';
-import { buildPrintHtml } from '../src/github-show/src/engine/printDoc';
+import { buildPrintHtml, buildPrintParts } from '../src/github-show/src/engine/printDoc';
 import { computeStats } from '../src/github-show/src/engine/stats';
 import { emptyDoc } from '@api/components/github-show/types';
 
@@ -61,6 +61,17 @@ describe('buildPrintHtml', () => {
     const html = buildPrintHtml({ doc: emptyDoc() });
     expect(html).toContain('暂无项目');
     expect(html).toContain('共 0 个项目');
+  });
+});
+
+describe('buildPrintParts', () => {
+  it('splits cssText and bodyHtml for PDF rendering', () => {
+    const parts = buildPrintParts({ doc: sampleDoc(), generatedAt: '2026-09-10 19:30' });
+    expect(parts.cssText).toContain('@page');
+    expect(parts.cssText).toContain('table');
+    expect(parts.bodyHtml).toContain('vuejs/core');
+    expect(parts.bodyHtml).not.toContain('<!doctype html>');
+    expect(parts.title).toBe('GitHub 项目展示');
   });
 });
 

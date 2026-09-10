@@ -10,7 +10,8 @@ import { useMemo, useState } from 'react';
 import type { GithubShowDoc } from '@api/components/github-show/types';
 import { useECharts } from '../hooks/useECharts';
 import { computeStats, contentChartData } from '../engine/stats';
-import { buildPrintHtml } from '../engine/printDoc';
+import { buildPrintHtml, buildPrintParts } from '../engine/printDoc';
+import { exportPdf } from '../engine/exportPdf';
 import { printHtml } from '../engine/print';
 import { deriveRepoName, displayLinkText, toHref } from '../utils/repo';
 
@@ -170,12 +171,14 @@ export default function DisplayView({ doc, onGoEdit }: DisplayViewProps) {
       } catch {
         chartDataUrl = null; // 图表异常不阻塞导出
       }
-      const html = buildPrintHtml({
-        doc,
-        chartDataUrl,
-        generatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
-      });
-      await printHtml(html);
+      const generatedAt = new Date().toLocaleString('zh-CN', { hour12: false });
+      const fileName = `github-show-${new Date().toISOString().slice(0, 10)}.pdf`;
+      const parts = buildPrintParts({ doc, chartDataUrl, generatedAt });
+      const downloaded = await exportPdf(parts, fileName);
+      if (!downloaded) {
+        // 下载失败(依赖加载/截图异常)→ 降级浏览器打印
+        await printHtml(buildPrintHtml({ doc, chartDataUrl, generatedAt }));
+      }
     } finally {
       setExporting(false);
     }

@@ -1,8 +1,9 @@
-// src/engine/printDoc.ts —— 展示视图导出 PDF 的 HTML 生成(纯函数,可单测)。
+// src/engine/printDoc.ts —— 展示视图导出 PDF 的内容生成(纯函数,可单测)。
 //
-// 生成一份自包含 HTML(内联 CSS + 可选图表 dataURL <img>),
-// 由 print.ts 塞进隐藏 iframe 调 window.print() 输出 PDF。
-// 不依赖组件 DOM / ShadowRoot —— 打印样式与组件样式完全隔离,输出稳定。
+// buildPrintParts 输出拆分的 CSS + body,供两类消费:
+//   - buildPrintHtml:组装自包含 HTML 走浏览器打印(降级路径)
+//   - exportPdf:渲染到屏幕外容器,html2canvas 截图 + jsPDF 分页直接下载
+// 不依赖组件 DOM / ShadowRoot —— 样式与组件完全隔离,输出稳定。
 
 import type { GithubShowDoc } from '@api/components/github-show/types';
 import { computeStats } from './stats';
@@ -15,6 +16,13 @@ export interface PrintDocOptions {
   generatedAt?: string;
   /** 文档标题 */
   title?: string;
+}
+
+/** 拆分产物:bodyHtml 为 <body> 内片段(含 <style> 由 cssText 提供)。 */
+export interface PrintDocParts {
+  title: string;
+  cssText: string;
+  bodyHtml: string;
 }
 
 function esc(s: string): string {
@@ -63,7 +71,7 @@ tr { break-inside: avoid; }
 .footer { margin-top: 16px; font-size: 10px; color: #9ca3af; text-align: right; }
 `;
 
-export function buildPrintHtml(options: PrintDocOptions): string {
+export function buildPrintParts(options: PrintDocOptions): PrintDocParts {
   const { doc, chartDataUrl = null, generatedAt = '', title = 'GitHub 项目展示' } = options;
   const stats = computeStats(doc);
 
@@ -104,15 +112,7 @@ export function buildPrintHtml(options: PrintDocOptions): string {
     })
     .join('');
 
-  return [
-    '<!doctype html>',
-    '<html lang="zh-CN">',
-    '<head>',
-    '<meta charset="utf-8">',
-    `<title>${esc(title)}</title>`,
-    `<style>${PRINT_CSS}</style>`,
-    '</head>',
-    '<body>',
+  const bodyHtml = [
     `<h1>${esc(title)}</h1>`,
     `<div class="meta">生成时间: ${esc(generatedAt || '—')} · 共 ${stats.total} 个项目</div>`,
     `<div class="stats">${statHtml}</div>`,
@@ -121,7 +121,24 @@ export function buildPrintHtml(options: PrintDocOptions): string {
     `<thead><tr>${headCells}</tr></thead>`,
     `<tbody>${bodyRows || '<tr><td colspan="5">暂无项目</td></tr>'}</tbody>`,
     '</table>',
-    '<div class="footer">数据来源: github-show · 由开发者自填 · 导出于浏览器打印</div>',
+    '<div class="footer">数据来源: github-show · 由开发者自填</div>',
+  ].join('');
+
+  return { title, cssText: PRINT_CSS, bodyHtml };
+}
+
+export function buildPrintHtml(options: PrintDocOptions): string {
+  const { title, cssText, bodyHtml } = buildPrintParts(options);
+  return [
+    '<!doctype html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '<meta charset="utf-8">',
+    `<title>${esc(title)}</title>`,
+    `<style>${cssText}</style>`,
+    '</head>',
+    '<body>',
+    bodyHtml,
     '</body>',
     '</html>',
   ].join('');
