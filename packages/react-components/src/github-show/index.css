@@ -1,0 +1,579 @@
+/* index.css —— GithubShow 样式
+   约定:类名用 sl-gh- 前缀,颜色/间距全部走 var(--sl-*, fallback) token
+   风格:扁平、白色背景、单一强调色 —— 数据库表格,清晰优先 */
+
+/* ===== Root ===== */
+.sl-gh-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--sl-color-surface, #fff);
+  color: var(--sl-color-text, #1f2328);
+  font-family: var(--sl-font-family, system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 顶栏 ===== */
+.sl-gh-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sl-color-border, #e5e7eb);
+  flex-wrap: wrap;
+}
+.sl-gh-topbar__left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.sl-gh-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sl-gh-meta {
+  font-size: 12px;
+  color: var(--sl-color-text-secondary, #6b7280);
+  white-space: nowrap;
+}
+.sl-gh-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sl-gh-search {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--sl-color-surface, #fff);
+  color: var(--sl-color-text, #1f2328);
+  outline: none;
+  width: 220px;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sl-gh-search:focus {
+  border-color: var(--sl-color-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ===== 按钮 ===== */
+.sl-gh-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--sl-color-surface-alt, #f3f4f6);
+  color: var(--sl-color-text, #1f2328);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.sl-gh-btn--primary {
+  background: var(--sl-color-primary, #2563eb);
+  color: var(--sl-color-on-primary, #fff);
+}
+.sl-gh-btn--primary:hover { background: #1d4ed8; }
+.sl-gh-btn--ghost {
+  background: transparent;
+  border-color: var(--sl-color-border, #e5e7eb);
+}
+.sl-gh-btn--ghost:hover { background: var(--sl-color-surface-alt, #f3f4f6); }
+
+/* ===== 同步状态条 ===== */
+.sl-gh-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sl-color-surface-alt, #f3f4f6);
+  color: var(--sl-color-text-secondary, #6b7280);
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  white-space: nowrap;
+}
+.sl-gh-pill--ok { color: #15803d; }
+.sl-gh-pill--error {
+  color: #b91c1c;
+  cursor: pointer;
+}
+.sl-gh-pill--error:hover { background: #fef2f2; }
+.sl-gh-pill--guest { color: var(--sl-color-text-secondary, #6b7280); }
+.sl-gh-pill__btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--sl-color-primary, #2563eb);
+  background: transparent;
+  color: var(--sl-color-primary, #2563eb);
+  cursor: pointer;
+}
+.sl-gh-pill__btn:hover { background: rgba(37, 99, 235, 0.08); }
+
+/* ===== 表格 ===== */
+.sl-gh-table {
+  display: grid;
+  grid-template-columns: 300px 170px 1fr 1fr 160px repeat(var(--sl-gh-custom-cols, 0), 160px) 44px;
+  overflow-x: auto;
+}
+
+.sl-gh-head {
+  display: contents;
+}
+.sl-gh-head > .sl-gh-cell {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sl-color-text-secondary, #6b7280);
+  background: var(--sl-color-surface-alt, #fafafa);
+  border-bottom: 1px solid var(--sl-color-border, #e5e7eb);
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.sl-gh-row {
+  display: contents;
+}
+.sl-gh-row:hover > .sl-gh-cell {
+  background: var(--sl-color-surface-alt, #fafafa);
+}
+.sl-gh-cell {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--sl-color-border, #e5e7eb);
+  min-width: 0;
+}
+.sl-gh-cell--url { padding-left: 12px; }
+.sl-gh-cell--ops {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 单元格输入框:透明底,聚焦才出现边框 —— 表格感,不喧宾夺主 */
+.sl-gh-input,
+.sl-gh-textarea {
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sl-color-text, #1f2328);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.sl-gh-input:hover,
+.sl-gh-textarea:hover { background: var(--sl-color-surface, #fff); }
+.sl-gh-input:focus,
+.sl-gh-textarea:focus {
+  background: var(--sl-color-surface, #fff);
+  border-color: var(--sl-color-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.sl-gh-input::placeholder,
+.sl-gh-textarea::placeholder {
+  color: var(--sl-color-text-dim, #9ca3af);
+}
+
+.sl-gh-textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 30px;
+  line-height: 1.45;
+  display: block;
+}
+
+/* URL 单元格:可点击链接(LinkCell)+ 编辑按钮 */
+.sl-gh-linkcell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sl-gh-linkcell__a {
+  font-size: 13px;
+  color: var(--sl-color-primary, #2563eb);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sl-gh-linkcell__a:hover {
+  text-decoration: underline;
+}
+.sl-gh-linkcell__edit {
+  flex: none;
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  background: transparent;
+  color: var(--sl-color-text-secondary, #6b7280);
+  cursor: pointer;
+  visibility: hidden;
+}
+.sl-gh-cell:hover .sl-gh-linkcell__edit,
+.sl-gh-linkcell__edit:focus-visible {
+  visibility: visible;
+}
+.sl-gh-linkcell__edit:hover {
+  color: var(--sl-color-primary, #2563eb);
+  border-color: var(--sl-color-primary, #2563eb);
+}
+.sl-gh-cell--custom.is-link {
+  /* 链接类自定义列:列头无额外元素 */
+}
+
+/* 删除按钮:× → ? 两步确认 */
+.sl-gh-del {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sl-color-text-dim, #9ca3af);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sl-gh-del:hover { background: #fef2f2; color: #dc2626; }
+.sl-gh-del.is-confirming {
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 700;
+  animation: sl-gh-pulse 0.8s ease-in-out infinite;
+}
+@keyframes sl-gh-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* 底部添加行 */
+.sl-gh-add-row {
+  grid-column: 1 / -1;
+  font: inherit;
+  font-size: 13px;
+  margin: 8px 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--sl-color-border, #d1d5db);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-color-text-secondary, #6b7280);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.sl-gh-add-row:hover {
+  border-color: var(--sl-color-primary, #2563eb);
+  color: var(--sl-color-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+/* ===== 空态 / 底栏 ===== */
+.sl-gh-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 64px 24px;
+  text-align: center;
+}
+.sl-gh-empty__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sl-color-text, #1f2328);
+}
+.sl-gh-empty__desc {
+  margin: 0;
+  max-width: 420px;
+  font-size: 13px;
+  color: var(--sl-color-text-secondary, #6b7280);
+}
+.sl-gh-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sl-gh-foot {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--sl-color-text-dim, #9ca3af);
+  border-top: 1px solid var(--sl-color-border, #e5e7eb);
+}
+
+/* ===== 视图切换 ===== */
+.sl-gh-viewswitch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--sl-color-surface-alt, #f3f4f6);
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+}
+.sl-gh-viewswitch__btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.sl-gh-viewswitch__btn:hover { color: var(--sl-color-text, #1f2328); }
+.sl-gh-viewswitch__btn.is-active {
+  background: var(--sl-color-surface, #fff);
+  color: var(--sl-color-primary, #2563eb);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== 列设置弹窗 ===== */
+.sl-gh-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+.sl-gh-modal {
+  width: 460px;
+  max-width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--sl-color-surface, #fff);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  color: var(--sl-color-text, #1f2328);
+}
+.sl-gh-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sl-gh-modal__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.sl-gh-modal__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-color-text-secondary, #6b7280);
+  font-size: 16px;
+  cursor: pointer;
+}
+.sl-gh-modal__close:hover { background: var(--sl-color-surface-alt, #f3f4f6); }
+.sl-gh-modal__hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--sl-color-text-dim, #9ca3af);
+  line-height: 1.5;
+}
+.sl-gh-colmgr {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sl-gh-colmgr__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sl-gh-colmgr__type {
+  flex: none;
+  font-size: 11px;
+  color: var(--sl-color-text-secondary, #6b7280);
+  background: var(--sl-color-surface-alt, #f3f4f6);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.sl-gh-colmgr__type.is-link { color: var(--sl-color-primary, #2563eb); }
+.sl-gh-colmgr__del {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sl-color-text-dim, #9ca3af);
+  font-size: 15px;
+  cursor: pointer;
+}
+.sl-gh-colmgr__del:hover { background: #fef2f2; color: #dc2626; }
+.sl-gh-colmgr__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--sl-color-border, #e5e7eb);
+}
+.sl-gh-colmgr__add .sl-gh-input { flex: 1; }
+.sl-gh-select {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--sl-color-surface, #fff);
+  color: var(--sl-color-text, #1f2328);
+}
+
+/* ===== 展示视图 ===== */
+.sl-gh-display {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  min-width: 0;
+}
+.sl-gh-dtoolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.sl-gh-dstats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.sl-gh-dstat {
+  padding: 12px 16px;
+  background: var(--sl-color-surface, #fff);
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  border-radius: 8px;
+}
+.sl-gh-dstat b {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--sl-color-text, #1f2328);
+}
+.sl-gh-dstat span {
+  font-size: 12px;
+  color: var(--sl-color-text-secondary, #6b7280);
+}
+.sl-gh-dcharts {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 10px;
+}
+.sl-gh-dchart {
+  background: var(--sl-color-surface, #fff);
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.sl-gh-dchart__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sl-color-text-secondary, #6b7280);
+  margin-bottom: 4px;
+}
+.sl-gh-dchart__canvas {
+  width: 100%;
+  height: 220px;
+}
+
+/* 展示表格:只读、吸顶表头、斑马纹 */
+.sl-gh-dtable-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--sl-color-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--sl-color-surface, #fff);
+}
+.sl-gh-dtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+.sl-gh-dtable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sl-color-surface-alt, #fafafa);
+  color: var(--sl-color-text-secondary, #6b7280);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sl-color-border, #e5e7eb);
+  white-space: nowrap;
+}
+.sl-gh-dtable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--sl-color-border, #e5e7eb);
+  vertical-align: top;
+}
+.sl-gh-dtable tbody tr:nth-child(even) { background: var(--sl-color-surface-alt, #fafafa); }
+.sl-gh-dtable tbody tr:hover { background: rgba(37, 99, 235, 0.04); }
+.sl-gh-dtable tbody tr:last-child td { border-bottom: none; }
+.sl-gh-dname { font-weight: 600; }
+.sl-gh-dtext {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sl-gh-dlink {
+  color: var(--sl-color-primary, #2563eb);
+  text-decoration: none;
+  word-break: break-all;
+}
+.sl-gh-dlink:hover { text-decoration: underline; }
+.sl-gh-dim { color: var(--sl-color-text-dim, #9ca3af); }
+.sl-gh-dsort {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.sl-gh-dsort:hover { color: var(--sl-color-primary, #2563eb); }
+.sl-gh-dsort__arrow { font-size: 11px; }
+
+/* 移动端:列收窄 */
+@media (max-width: 768px) {
+  .sl-gh-table {
+    grid-template-columns: 240px 130px 1fr 1fr 130px repeat(var(--sl-gh-custom-cols, 0), 130px) 36px;
+  }
+  .sl-gh-search { width: 160px; }
+  .sl-gh-dstats { grid-template-columns: repeat(2, 1fr); }
+  .sl-gh-dcharts { grid-template-columns: 1fr; }
+}

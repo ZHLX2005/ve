@@ -1,0 +1,128 @@
+// src/engine/printDoc.ts —— 展示视图导出 PDF 的 HTML 生成(纯函数,可单测)。
+//
+// 生成一份自包含 HTML(内联 CSS + 可选图表 dataURL <img>),
+// 由 print.ts 塞进隐藏 iframe 调 window.print() 输出 PDF。
+// 不依赖组件 DOM / ShadowRoot —— 打印样式与组件样式完全隔离,输出稳定。
+
+import type { GithubShowDoc } from '@api/components/github-show/types';
+import { computeStats } from './stats';
+
+export interface PrintDocOptions {
+  doc: GithubShowDoc;
+  /** ECharts 导出的 dataURL(png),可为 null(无图) */
+  chartDataUrl?: string | null;
+  /** 生成时间文案,如 '2026-09-10 19:30' */
+  generatedAt?: string;
+  /** 文档标题 */
+  title?: string;
+}
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** 多行文本 → <br> 分行(先转义再替换换行)。 */
+function lines(s: string): string {
+  return esc(s).replace(/\r?\n/g, '<br>');
+}
+
+function linkCell(raw: string): string {
+  const url = raw.trim();
+  if (!url) return '<span class="dim">—</span>';
+  return `<a href="${esc(url)}">${esc(url)}</a>`;
+}
+
+function textCell(raw: string): string {
+  const v = raw.trim();
+  if (!v) return '<span class="dim">—</span>';
+  return lines(v);
+}
+
+const PRINT_CSS = `
+@page { size: A4; margin: 16mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2328; font-size: 12px; line-height: 1.55; margin: 0; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.meta { color: #6b7280; font-size: 11px; margin-bottom: 14px; }
+.stats { display: flex; gap: 28px; margin-bottom: 14px; padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }
+.stat b { display: block; font-size: 20px; }
+.stat span { font-size: 11px; color: #6b7280; }
+.chart { width: 100%; max-height: 280px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #e5e7eb; padding: 7px 9px; vertical-align: top; text-align: left; }
+th { background: #f9fafb; font-size: 11px; font-weight: 600; color: #374151; white-space: nowrap; }
+td.name { min-width: 96px; font-weight: 600; }
+a { color: #2563eb; text-decoration: none; word-break: break-all; }
+.dim { color: #9ca3af; }
+tr { break-inside: avoid; }
+.footer { margin-top: 16px; font-size: 10px; color: #9ca3af; text-align: right; }
+`;
+
+export function buildPrintHtml(options: PrintDocOptions): string {
+  const { doc, chartDataUrl = null, generatedAt = '', title = 'GitHub 项目展示' } = options;
+  const stats = computeStats(doc);
+
+  const percent = Math.round(stats.contentRate * 100);
+  const statHtml = `
+    <div class="stat"><b>${stats.total}</b><span>项目总数</span></div>
+    <div class="stat"><b>${stats.highlightsFilled}</b><span>已填亮点</span></div>
+    <div class="stat"><b>${stats.insightsFilled}</b><span>已填启发</span></div>
+    <div class="stat"><b>${percent}%</b><span>内容完整度</span></div>`;
+
+  const chartHtml = chartDataUrl
+    ? `<img class="chart" src="${chartDataUrl}" alt="项目介绍充实度">`
+    : '';
+
+  const headCells = [
+    '<th>项目</th>',
+    '<th>GitHub 链接</th>',
+    '<th>亮点</th>',
+    '<th>启发</th>',
+    '<th>线上地址</th>',
+    ...doc.columns.map((c) => `<th>${esc(c.title)}</th>`),
+  ].join('');
+
+  const bodyRows = doc.rows
+    .map((r) => {
+      const cells = [
+        `<td class="name">${esc(r.name.trim() || '未命名项目')}</td>`,
+        `<td>${linkCell(r.repoUrl)}</td>`,
+        `<td>${textCell(r.highlights)}</td>`,
+        `<td>${textCell(r.insights)}</td>`,
+        `<td>${linkCell(r.demoUrl)}</td>`,
+        ...doc.columns.map((c) => {
+          const v = r.values[c.id] ?? '';
+          return `<td>${c.type === 'link' ? linkCell(v) : textCell(v)}</td>`;
+        }),
+      ].join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+
+  return [
+    '<!doctype html>',
+    '<html lang="zh-CN">',
+    '<head>',
+    '<meta charset="utf-8">',
+    `<title>${esc(title)}</title>`,
+    `<style>${PRINT_CSS}</style>`,
+    '</head>',
+    '<body>',
+    `<h1>${esc(title)}</h1>`,
+    `<div class="meta">生成时间: ${esc(generatedAt || '—')} · 共 ${stats.total} 个项目</div>`,
+    `<div class="stats">${statHtml}</div>`,
+    chartHtml,
+    '<table>',
+    `<thead><tr>${headCells}</tr></thead>`,
+    `<tbody>${bodyRows || '<tr><td colspan="5">暂无项目</td></tr>'}</tbody>`,
+    '</table>',
+    '<div class="footer">数据来源: github-show · 由开发者自填 · 导出于浏览器打印</div>',
+    '</body>',
+    '</html>',
+  ].join('');
+}

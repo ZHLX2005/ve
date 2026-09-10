@@ -12,3 +12,4 @@
 export * from './shortcut-library';
 export * from './user-space';
 export * from './color-studio';
+export * from './github-show';

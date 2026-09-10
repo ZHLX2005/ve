@@ -222,6 +222,9 @@ importers:
       culori:
         specifier: ^4.0.0
         version: 4.0.2
+      echarts:
+        specifier: ^5.5.0
+        version: 5.6.0
       perfect-freehand:
         specifier: ^1.2.3
         version: 1.2.3
