@@ -3,11 +3,13 @@
    风格:扁平、白色背景、单一强调色 —— 数据库表格,清晰优先 */
 
 /* ===== Root ===== */
-/* 宿主把组件放进 fixed + 100vh + overflow:hidden 的容器,组件必须自己滚动 */
+/* 宿主把组件放进 fixed + 100vh + overflow:hidden 的容器;
+   ShadowRoot 内 portalTarget 高度为 auto,height:100% 的百分比会塌缩,
+   必须用视口高度 100vh 定高,再由 root 自己滚动(与 shortcut-library 同解法)。 */
 .sl-gh-root {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
   overflow-y: auto;
   background: var(--sl-color-surface, #fff);
   color: var(--sl-color-text, #1f2328);
@@ -378,6 +380,172 @@
   font-size: 11px;
   color: var(--sl-color-text-dim, #9ca3af);
   border-top: 1px solid var(--sl-color-border, #e5e7eb);
+}
+
+/* ===== 公开分享模式 banner(readOnly 时挂载) ===== */
+.sl-gh-public-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #e0f2fe 0%, #ecfeff 100%);
+  border-bottom: 1px solid #bae6fd;
+  color: #075985;
+  font-size: 12.5px;
+}
+.sl-gh-public-banner__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.sl-gh-public-banner__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.sl-gh-public-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sl-gh-public-banner__text strong {
+  font-weight: 600;
+  color: #0c4a6e;
+}
+.sl-gh-public-banner__hint {
+  font-size: 11px;
+  color: #075985;
+  opacity: 0.85;
+}
+.sl-gh-public-banner__hint code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 3px;
+  font-size: 10.5px;
+}
+.sl-gh-public-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sl-gh-public-banner__actions a {
+  text-decoration: none;
+}
+
+/* sl-gh-btn--sm —— 小尺寸按钮(banner 内联用) */
+.sl-gh-btn--sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  border-radius: 5px;
+}
+
+/* ===== 公开分享按钮 + 弹层(ShareButton) ===== */
+.sl-gh-share {
+  position: relative;
+  display: inline-block;
+}
+.sl-gh-btn--public {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+.sl-gh-btn--public:hover:not([disabled]) {
+  background: #bae6fd;
+  border-color: #7dd3fc;
+}
+.sl-gh-share__popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  font-size: 12.5px;
+  color: #111827;
+}
+.sl-gh-share__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sl-gh-share__row--toggle,
+.sl-gh-share__row--link {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+.sl-gh-share__row--foot {
+  margin-top: -2px;
+}
+.sl-gh-share__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sl-gh-share__status {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 12.5px;
+}
+.sl-gh-share__status.is-public {
+  color: #075985;
+}
+.sl-gh-share__hint {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+.sl-gh-share__hint code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  background: #f3f4f6;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: #4b5563;
+}
+.sl-gh-share__error {
+  padding: 8px 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 5px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.sl-gh-share__urlbox {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.sl-gh-share__url {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #f9fafb;
+  color: #374151;
+  outline: none;
+}
+.sl-gh-share__url:focus {
+  border-color: #93c5fd;
+  background: #ffffff;
 }
 
 /* ===== 视图切换 ===== */

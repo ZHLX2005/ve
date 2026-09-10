@@ -16,7 +16,57 @@ GitHub 项目展示数据库 —— Notion/Feishu 式表格,给面试官看项�
 - **搜索**:跨链接 / 项目名 / 亮点 / 启发 / 线上地址 / 自定义列过滤
 - **云端同步**:整份文档 JSON blob 存单个 KV key(`github-show`),登录后自动云端保存
 - **游客降级**:未登录时数据保存在本机 localStorage,登录后无缝接管
+- **公开分享 URL**(2026-09 起):URL 带 `?groupId=N[&key=...]` 时进入只读分享模式,任何人(匿名)都能看别人公开的 github-show,详情见下文
 - **删除两步确认**:`×` → `?` → 删除,避免误删
+
+## 公开分享 URL(v1.3.0+)
+
+把"我的 github-show"分享给面试官或同行:**只需在组件 URL 后面带一个 `groupId` 参数**,
+组件自动从后端公开读接口拉取那个工作空间的 KV,只读展示。
+
+```
+# 默认 key(github-show)
+https://<host>/components/github-show?groupId=42
+
+# 自定义 key(给将来其他 KV 留口子)
+https://<host>/components/github-show?groupId=42&key=my-cover
+```
+
+### 工作机制
+
+1. **进入条件**:URL 含 `groupId=正整数`。`key` 可选,默认 `github-show`。
+2. **数据源**:走 `GET /api/v1/kv/public/:key?groupId=` 无鉴权接口,
+   仅放行 `visibility='public'` 且未过期的 KV。其他状态(key 不存在 / visibility=private / 过期)
+   统一返 404,UI 显示「公开分享加载失败」并提示原因。
+3. **只读模式**:任何编辑按钮(添加项目 / 编辑 / 删除 / 列设置)被隐藏;顶栏强制 `展示` 视图;
+   `mutate()` 在 hook 内部拦截成 no-op(双保险,即使误调也不会写)。
+4. **顶部 banner**:提示「公开分享模式」+ 当前在读的 groupId / key;「🔗 复制分享链接」一键复制
+   当前 URL 给别人;「我也要分享 →」跳到不带 query 的同组件页 = 编辑自己的 github-show。
+
+### 分享者操作步骤
+
+**方法 A:组件内一键分享**(推荐,2026-09 起)
+
+1. 登录后,在自己编辑的 github-show 顶栏点击 **「🔒 设为公开分享」** 按钮
+2. 弹层里点 **「🌐 设为公开」** → 后端 `POST /kv/:key/visibility` 写审计 `set_public`
+3. 弹层下方自动展示分享链接(完整 URL,带 `?groupId=<你的 groupId>`),点 **「📋 复制」** 即拿到
+4. 链接可发给任何人 / 邮件 / 简历 — 对方无需登录即可浏览
+5. 想收回分享?再点弹层里 **「🔒 改为私有」** → 写审计 `set_private`,原链接立即 404
+
+**方法 B:经 KV UI 设置可见性**(通用流程)
+
+1. 在「用户空间 → KV 库存」编辑 `github-show`,在「可见性」单选里选 **🌐 公开** → 保存
+2. 从浏览器地址栏复制当前 `?groupId=<我的 groupId>` 的 URL(因为组件默认走默认组)
+3. 发给面试官 / 同行 / 邮件 / 简历 → 对方无需登录即可浏览
+
+两种方法底层调同一个端点,效果一致。**方法 A 更直观**(组件内即看即用,无需跳转),**方法 B 通用**(任何 KV 都适用)。
+
+### 关键约束
+
+- `groupId` 是数字(后端 `users.user_groups.id`),**不能跨用户**:你分享出去的是
+  你所在工作空间里的 KV;别人可以浏览,但**没有写权限**(公开读接口无 Set/Delete/List)
+- 关闭公开 = 在 KV UI 切回 `🔒 私有`,原 URL 立即 404(下次访问就看不到)
+- TTL 设了就会过期;过期后原 URL 也 404
 
 ## 数据模型(v1.2.0)
 
@@ -58,6 +108,8 @@ src/
   hooks/useAuth.ts         # re-export host 登录态
   hooks/useLoginModal.ts   # re-export host 登录弹窗
   storage/LocalStore.ts    # 游客 localStorage 存储
+  storage/PublicStore.ts   # 公开分享模式只读 store(走 /kv/public/:key?groupId=)
+  utils/shareLink.ts       # URL 解析(readPublicParamsFromUrl) + 构建(buildShareUrl)
   utils/repo.ts            # GitHub 链接解析 + http 链接/文本拆分纯函数
   utils/tags.ts            # 多选值序列化 / 解析纯函数
   engine/stats.ts          # 展示统计纯函数(指标 + 图表数据)
@@ -70,4 +122,5 @@ src/
   components/LinkCell.tsx           # 可点击跳转的链接单元格
   components/MultiSelectCell.tsx    # 多选列 chip 编辑器
   components/SyncPill.tsx           # 同步状态条
+  components/PublicShareBanner.tsx  # 公开分享模式顶部 banner
 ```
