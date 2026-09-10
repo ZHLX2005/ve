@@ -5,7 +5,7 @@
 //   - ECharts:项目介绍充实度(分组柱状图)+ 亮点填写率(环形图)
 //   - 只读数据库表格:链接可点击跳转,列头可排序
 //   - 导出 PDF:展示内容(含图表)直接下载 .pdf(失败降级浏览器打印)
-// 渲染规则:文本列含 http 自动渲染链接;多选列渲染为标签;线上地址为可选文本列。
+// 渲染规则:文本列含 http 自动渲染链接;多选列渲染为标签;产出为可选文本列。
 
 import { useMemo, useState } from 'react';
 import type { GithubShowDoc } from '@api/components/github-show/types';
@@ -22,7 +22,7 @@ export interface DisplayViewProps {
   onGoEdit: () => void;
 }
 
-type SortKey = 'order' | 'name' | 'highlights' | 'insights';
+type SortKey = 'order' | 'name' | 'highlights' | 'insights' | string;
 
 interface SortState {
   key: SortKey;
@@ -33,14 +33,35 @@ const PRIMARY = '#3b82f6';
 const ACCENT = '#10b981';
 const MUTED = '#e5e7eb';
 
+/** 数字列比较:按数值大小;空值视为 0(未填排前)。 */
+function compareNumber(a: string, b: string): number {
+  const an = a.trim() === '' ? 0 : Number(a);
+  const bn = b.trim() === '' ? 0 : Number(b);
+  if (Number.isNaN(an) && Number.isNaN(bn)) return 0;
+  if (Number.isNaN(an)) return 1;
+  if (Number.isNaN(bn)) return -1;
+  return an - bn;
+}
+
 function sortRows(doc: GithubShowDoc, sort: SortState): typeof doc.rows {
   if (sort.key === 'order') return doc.rows;
   const dir = sort.dir;
+  const col = doc.columns.find((c) => c.id === sort.key);
   return [...doc.rows].sort((a, b) => {
     if (sort.key === 'name') return a.name.localeCompare(b.name, 'zh') * dir;
-    const av = a[sort.key].length;
-    const bv = b[sort.key].length;
-    return (av - bv) * dir || a.name.localeCompare(b.name, 'zh');
+    if (sort.key === 'highlights' || sort.key === 'insights') {
+      const av = a[sort.key].length;
+      const bv = b[sort.key].length;
+      return (av - bv) * dir || a.name.localeCompare(b.name, 'zh');
+    }
+    // 自定义列:数字列按数值,文本/多选列按字符串
+    if (col) {
+      const av = a.values[col.id] ?? '';
+      const bv = b.values[col.id] ?? '';
+      const cmp = col.type === 'number' ? compareNumber(av, bv) : av.localeCompare(bv, 'zh');
+      return cmp * dir || a.name.localeCompare(b.name, 'zh');
+    }
+    return 0;
   });
 }
 
@@ -124,6 +145,8 @@ export default function DisplayView({ doc, onGoEdit }: DisplayViewProps) {
 
   const stats = useMemo(() => computeStats(doc), [doc]);
   const chartData = useMemo(() => contentChartData(doc, 12), [doc]);
+  // 展示页只渲染 hiddenInDisplay=false 的自定义列(编辑页始终显示全部列)
+  const visibleColumns = useMemo(() => doc.columns.filter((c) => !c.hiddenInDisplay), [doc.columns]);
   const sortedRows = useMemo(() => sortRows(doc, sort), [doc, sort]);
 
   const barOption = useMemo(
@@ -288,9 +311,9 @@ export default function DisplayView({ doc, onGoEdit }: DisplayViewProps) {
               <HeaderCell label="项目名" sort={sort} sortKey="name" onSort={toggleSort} />
               <HeaderCell label="亮点" sort={sort} sortKey="highlights" onSort={toggleSort} />
               <HeaderCell label="启发" sort={sort} sortKey="insights" onSort={toggleSort} />
-              <th>线上地址</th>
-              {doc.columns.map((c) => (
-                <th key={c.id}>{c.title}</th>
+              <th>产出</th>
+              {visibleColumns.map((c) => (
+                <HeaderCell key={c.id} label={c.title} sort={sort} sortKey={c.id} onSort={toggleSort} />
               ))}
             </tr>
           </thead>
@@ -304,10 +327,17 @@ export default function DisplayView({ doc, onGoEdit }: DisplayViewProps) {
                 <td className="sl-gh-dtext">{row.highlights || <span className="sl-gh-dim">—</span>}</td>
                 <td className="sl-gh-dtext">{row.insights || <span className="sl-gh-dim">—</span>}</td>
                 <td>
-                  {row.demoUrl ? <RichText value={row.demoUrl} /> : <span className="sl-gh-dim">—</span>}
+                  {row.output ? <RichText value={row.output} /> : <span className="sl-gh-dim">—</span>}
                 </td>
-                {doc.columns.map((c) => {
+                {visibleColumns.map((c) => {
                   const v = row.values[c.id] ?? '';
+                  if (c.type === 'number') {
+                    return (
+                      <td key={c.id} className="sl-gh-dnum">
+                        {v.trim() !== '' ? v : <span className="sl-gh-dim">—</span>}
+                      </td>
+                    );
+                  }
                   return (
                     <td key={c.id} className="sl-gh-dtext">
                       {c.type === 'multi-select' ? (

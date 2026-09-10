@@ -8,7 +8,7 @@ export interface GithubShowStats {
   total: number;
   highlightsFilled: number;
   insightsFilled: number;
-  withDemo: number;
+  withOutput: number;
   /** 亮点或启发至少填了一个的项目占比(0..1) */
   contentRate: number;
 }
@@ -18,21 +18,21 @@ export function computeStats(doc: GithubShowDoc): GithubShowStats {
   const total = rows.length;
   let highlightsFilled = 0;
   let insightsFilled = 0;
-  let withDemo = 0;
+  let withOutput = 0;
   let anyContent = 0;
   for (const r of rows) {
     const h = r.highlights.trim().length > 0;
     const i = r.insights.trim().length > 0;
     if (h) highlightsFilled += 1;
     if (i) insightsFilled += 1;
-    if (r.demoUrl.trim()) withDemo += 1;
+    if (r.output.trim()) withOutput += 1;
     if (h || i) anyContent += 1;
   }
   return {
     total,
     highlightsFilled,
     insightsFilled,
-    withDemo,
+    withOutput,
     contentRate: total === 0 ? 0 : anyContent / total,
   };
 }

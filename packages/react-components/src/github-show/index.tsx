@@ -32,7 +32,7 @@ const SAMPLE_ROW = {
   name: 'vuejs/core',
   highlights: '示例亮点:组合式 API、响应式系统、高性能虚拟 DOM',
   insights: '示例启发:把核心 API 设计得小而正交,降低上手成本',
-  demoUrl: 'https://vuejs.org/',
+  output: 'https://vuejs.org/',
 };
 
 function readInitialView(): ViewMode {
@@ -47,7 +47,7 @@ function filterRows(rows: GithubShowRow[], query: string): GithubShowRow[] {
   const q = query.trim().toLowerCase();
   if (!q) return rows;
   return rows.filter((r) =>
-    [r.repoUrl, r.name, r.highlights, r.insights, r.demoUrl, ...Object.values(r.values)].some((f) =>
+    [r.repoUrl, r.name, r.highlights, r.insights, r.output, ...Object.values(r.values)].some((f) =>
       f.toLowerCase().includes(q),
     ),
   );
@@ -81,7 +81,7 @@ export default function GithubShow() {
     [store.rows, query],
   );
 
-  function handleAddRow(partial?: Partial<Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'demoUrl'>>) {
+  function handleAddRow(partial?: Partial<Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'output'>>) {
     const row = store.addRow(partial);
     if (row) setFocusRowId(row.id);
   }
@@ -226,6 +226,7 @@ export default function GithubShow() {
           onAddRow={() => handleAddRow()}
           onUpdateRow={store.updateRow}
           onDeleteRow={store.deleteRow}
+          onMoveRow={store.moveRow}
           onSetCellValue={store.setCellValue}
         />
       )}
@@ -236,13 +237,14 @@ export default function GithubShow() {
           onAdd={store.addColumn}
           onRename={store.renameColumn}
           onDelete={store.deleteColumn}
+          onToggleVisible={store.toggleColumnVisibility}
           onClose={() => setColumnsOpen(false)}
         />
       )}
 
       <footer className="sl-gh-foot">
         {store.readOnly
-          ? '🌐 公开分享模式 — 通过 URL groupId 参数只读访问,不会写入任何数据。'
+          ? '公开分享模式 — 通过 URL groupId 参数只读访问,不会写入任何数据。'
           : '数据整体保存在一个云端 key(github-show);未登录时仅保存在本机浏览器。'}
       </footer>
     </div>

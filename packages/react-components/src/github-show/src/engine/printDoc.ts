@@ -55,7 +55,7 @@ function textCell(raw: string): string {
 
 /**
  * 富文本单元格:含 http(s) 的片段渲染为可点击链接,其余保留原文
- * (线上地址 / 文本列可写说明文字,URL 自动可点)。
+ * (产出 / 文本列可写说明文字,URL 自动可点)。
  */
 function richTextCell(raw: string): string {
   const v = raw.trim();
@@ -102,6 +102,8 @@ tr { break-inside: avoid; }
 export function buildPrintParts(options: PrintDocOptions): PrintDocParts {
   const { doc, chartDataUrl = null, generatedAt = '', title = 'GitHub 项目展示' } = options;
   const stats = computeStats(doc);
+  // PDF 与展示页一致:跳过 hiddenInDisplay=true 的自定义列
+  const cols = doc.columns.filter((c) => !c.hiddenInDisplay);
 
   const percent = Math.round(stats.contentRate * 100);
   const statHtml = `
@@ -119,8 +121,8 @@ export function buildPrintParts(options: PrintDocOptions): PrintDocParts {
     '<th>GitHub 链接</th>',
     '<th>亮点</th>',
     '<th>启发</th>',
-    '<th>线上地址</th>',
-    ...doc.columns.map((c) => `<th>${esc(c.title)}</th>`),
+    '<th>产出</th>',
+    ...cols.map((c) => `<th>${esc(c.title)}</th>`),
   ].join('');
 
   const bodyRows = doc.rows
@@ -130,9 +132,12 @@ export function buildPrintParts(options: PrintDocOptions): PrintDocParts {
         `<td>${linkCell(r.repoUrl)}</td>`,
         `<td>${textCell(r.highlights)}</td>`,
         `<td>${textCell(r.insights)}</td>`,
-        `<td>${richTextCell(r.demoUrl)}</td>`,
-        ...doc.columns.map((c) => {
+        `<td>${richTextCell(r.output)}</td>`,
+        ...cols.map((c) => {
           const v = r.values[c.id] ?? '';
+          if (c.type === 'number') {
+            return `<td>${v.trim() !== '' ? esc(v) : '<span class="dim">—</span>'}</td>`;
+          }
           return `<td>${c.type === 'multi-select' ? tagsCell(v) : richTextCell(v)}</td>`;
         }),
       ].join('');

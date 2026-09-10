@@ -159,7 +159,7 @@ export function useGithubShow() {
   const addRow = useCallback(
     (
       partial?: Partial<
-        Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'demoUrl' | 'values'>
+        Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'output' | 'values'>
       >,
     ): GithubShowRow | null => {
       // 公开分享模式返回 null,UI 用 readOnly 守卫应该已经禁掉按钮;此处兜底
@@ -171,7 +171,7 @@ export function useGithubShow() {
         name: partial?.name ?? '',
         highlights: partial?.highlights ?? '',
         insights: partial?.insights ?? '',
-        demoUrl: partial?.demoUrl ?? '',
+        output: partial?.output ?? '',
         values: partial?.values ?? {},
         createdAt: now,
         updatedAt: now,
@@ -190,7 +190,7 @@ export function useGithubShow() {
     (
       id: string,
       patch: Partial<
-        Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'demoUrl' | 'values'>
+        Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'output' | 'values'>
       >,
     ) => {
       if (publicParams) return;
@@ -217,17 +217,37 @@ export function useGithubShow() {
     [mutate, publicParams],
   );
 
+  /** 调整行顺序:dir = -1 上移,1 下移(与相邻行交换)。顺序即 doc.rows 数组序,随保存同步。 */
+  const moveRow = useCallback(
+    (id: string, dir: -1 | 1) => {
+      if (publicParams) return;
+      const now = Date.now();
+      mutate((prev) => {
+        const idx = prev.rows.findIndex((r) => r.id === id);
+        const target = idx + dir;
+        if (idx < 0 || target < 0 || target >= prev.rows.length) return prev;
+        const rows = prev.rows.slice();
+        [rows[idx], rows[target]] = [rows[target], rows[idx]];
+        return { ...prev, meta: { ...prev.meta, updatedAt: now }, rows };
+      });
+    },
+    [mutate, publicParams],
+  );
+
   // ── 自定义列 ──────────────────────────────────────────
 
   const addColumn = useCallback(
-    (title: string, type: 'text' | 'multi-select'): string | null => {
+    (title: string, type: 'text' | 'multi-select' | 'number'): string | null => {
       if (publicParams) return null;
       const now = Date.now();
       const colId = freshId();
       mutate((prev) => ({
         ...prev,
         meta: { ...prev.meta, updatedAt: now },
-        columns: [...prev.columns, { id: colId, title: title.trim() || '未命名', type, createdAt: now }],
+        columns: [
+          ...prev.columns,
+          { id: colId, title: title.trim() || '未命名', type, createdAt: now, hiddenInDisplay: false },
+        ],
       }));
       return colId;
     },
@@ -243,6 +263,22 @@ export function useGithubShow() {
         meta: { ...prev.meta, updatedAt: now },
         columns: prev.columns.map((c) =>
           c.id === colId ? { ...c, title: title.trim() || c.title } : c,
+        ),
+      }));
+    },
+    [mutate, publicParams],
+  );
+
+  /** 切换自定义列在展示页的显示状态(编辑页始终显示)。 */
+  const toggleColumnVisibility = useCallback(
+    (colId: string, hiddenInDisplay: boolean) => {
+      if (publicParams) return;
+      const now = Date.now();
+      mutate((prev) => ({
+        ...prev,
+        meta: { ...prev.meta, updatedAt: now },
+        columns: prev.columns.map((c) =>
+          c.id === colId ? { ...c, hiddenInDisplay } : c,
         ),
       }));
     },
@@ -311,9 +347,11 @@ export function useGithubShow() {
     addRow,
     updateRow,
     deleteRow,
+    moveRow,
     addColumn,
     renameColumn,
     deleteColumn,
+    toggleColumnVisibility,
     setCellValue,
     retrySave,
   };

@@ -34,7 +34,7 @@ function parts() {
     name: 'a/b',
     highlights: '亮点',
     insights: '启发',
-    demoUrl: '',
+    output: '',
     values: {},
     createdAt: 1,
     updatedAt: 1,

@@ -8,8 +8,10 @@ import { emptyDoc } from '@api/components/github-show/types';
 function sampleDoc() {
   const doc = emptyDoc('a@b.c', 1000);
   doc.columns = [
-    { id: 'c1', title: '技术栈', type: 'text', createdAt: 2 },
-    { id: 'c2', title: '标签', type: 'multi-select', createdAt: 3 },
+    { id: 'c1', title: '技术栈', type: 'text', createdAt: 2, hiddenInDisplay: false },
+    { id: 'c2', title: '标签', type: 'multi-select', createdAt: 3, hiddenInDisplay: false },
+    { id: 'c3', title: '评分', type: 'number', createdAt: 4, hiddenInDisplay: false },
+    { id: 'c4', title: '内部备注', type: 'text', createdAt: 5, hiddenInDisplay: true },
   ];
   doc.rows.push({
     id: 'r1',
@@ -17,8 +19,13 @@ function sampleDoc() {
     name: 'vuejs/core',
     highlights: '响应式系统\n组合式 API',
     insights: '小而正交的 API 设计',
-    demoUrl: '演示站点 https://vuejs.org/（官方文档）',
-    values: { c1: 'TypeScript 与 https://www.typescriptlang.org/', c2: '["Vue","TS"]' },
+    output: '演示站点 https://vuejs.org/（官方文档）',
+    values: {
+      c1: 'TypeScript 与 https://www.typescriptlang.org/',
+      c2: '["Vue","TS"]',
+      c3: '96',
+      c4: '仅自己可见',
+    },
     createdAt: 1,
     updatedAt: 1,
   });
@@ -40,7 +47,7 @@ describe('buildPrintHtml', () => {
     expect(html).toContain('共 1 个项目');
   });
 
-  it('renders demo url text with explanation and link', () => {
+  it('renders output text with explanation and link', () => {
     const html = buildPrintHtml({ doc: sampleDoc() });
     // 说明文字保留
     expect(html).toContain('演示站点 ');
@@ -61,6 +68,21 @@ describe('buildPrintHtml', () => {
     const html = buildPrintHtml({ doc: sampleDoc() });
     expect(html).toContain('<span class="ptag">Vue</span>');
     expect(html).toContain('<span class="ptag">TS</span>');
+  });
+
+  it('renders number column value as plain text', () => {
+    const html = buildPrintHtml({ doc: sampleDoc() });
+    expect(html).toContain('<th>评分</th>');
+    expect(html).toContain('<td>96</td>');
+  });
+
+  it('omits columns hidden from display in PDF export', () => {
+    const html = buildPrintHtml({ doc: sampleDoc() });
+    expect(html).not.toContain('内部备注');
+    expect(html).not.toContain('仅自己可见');
+    // 其它可见列仍在
+    expect(html).toContain('技术栈');
+    expect(html).toContain('评分');
   });
 
   it('embeds chart data URL when provided', () => {
@@ -110,7 +132,7 @@ describe('computeStats', () => {
       name: '空项目',
       highlights: '',
       insights: '',
-      demoUrl: '',
+      output: '',
       values: {},
       createdAt: 3,
       updatedAt: 3,
@@ -119,7 +141,7 @@ describe('computeStats', () => {
     expect(stats.total).toBe(2);
     expect(stats.highlightsFilled).toBe(1);
     expect(stats.insightsFilled).toBe(1);
-    expect(stats.withDemo).toBe(1);
+    expect(stats.withOutput).toBe(1);
     expect(stats.contentRate).toBe(0.5);
   });
 });

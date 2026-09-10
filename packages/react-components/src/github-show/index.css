@@ -299,7 +299,63 @@
   /* 多选类自定义列:列头无额外元素 */
 }
 
-/* 删除按钮:× → ? 两步确认 */
+/* 操作列:上移 / 下移 + 删除(× → ? 两步确认) */
+.sl-gh-ops {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sl-gh-move {
+  flex: none;
+  width: 24px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sl-color-text-dim, #9ca3af);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sl-gh-move:hover:not(:disabled) {
+  background: var(--sl-color-surface-alt, #f3f4f6);
+  color: var(--sl-color-primary, #2563eb);
+}
+.sl-gh-move:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+/* 数字列:数字输入框,展示页右对齐便于扫描 */
+.sl-gh-input--number {
+  text-align: right;
+}
+.sl-gh-dnum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 列设置弹窗:展示页显示开关 */
+.sl-gh-colmgr__vis {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--sl-color-text-dim, #9ca3af);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.sl-gh-colmgr__vis input {
+  margin: 0;
+  accent-color: var(--sl-color-primary, #2563eb);
+}
+.sl-gh-colmgr__type.is-num {
+  color: #0f766e;
+}
+
 .sl-gh-del {
   flex: none;
   width: 26px;

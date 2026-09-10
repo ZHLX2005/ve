@@ -1,10 +1,10 @@
 // src/components/GithubShowTable.tsx —— 编辑视图的数据库表格本体。
 //
-// 列:GitHub 链接 | 项目名 | 亮点 | 启发 | 线上地址(可选文本列) | 自定义列 | 操作
+// 列:GitHub 链接 | 项目名 | 亮点 | 启发 | 产出(可选文本列) | 自定义列 | 操作
 // - 链接列(GitHub)用 LinkCell:合法即点击跳转,可编辑
-// - 线上地址是可选文本列:可写解释文字,含 http 自动可点,可修改可清空
+// - 产出是可选文本列:可写解释文字,含 http 自动可点,可修改可清空
 // - 自定义列:text 用自动撑高 textarea(含 http 渲染在展示/导出);multi-select 用 chip 编辑器
-// - 删除行走两步确认
+// - 操作列:上移 / 下移调整项目顺序(随保存自动同步);删除行走两步确认
 // 样式统一 sl-gh- 前缀 + --sl-* token。
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
@@ -12,6 +12,7 @@ import type { GithubShowColumn, GithubShowRow } from '@api/components/github-sho
 import { deriveRepoName, displayLinkText } from '../utils/repo';
 import LinkCell from './LinkCell';
 import MultiSelectCell from './MultiSelectCell';
+import NumberCell from './NumberCell';
 
 export interface GithubShowTableProps {
   rows: GithubShowRow[];
@@ -21,9 +22,11 @@ export interface GithubShowTableProps {
   onAddRow: () => void;
   onUpdateRow: (
     id: string,
-    patch: Partial<Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'demoUrl'>>,
+    patch: Partial<Pick<GithubShowRow, 'repoUrl' | 'name' | 'highlights' | 'insights' | 'output'>>,
   ) => void;
   onDeleteRow: (id: string) => void;
+  /** 调整行顺序:dir = -1 上移,1 下移(与相邻行交换,随保存同步) */
+  onMoveRow: (id: string, dir: -1 | 1) => void;
   onSetCellValue: (rowId: string, colId: string, value: string) => void;
 }
 
@@ -76,6 +79,7 @@ function GithubShowTable({
   onAddRow,
   onUpdateRow,
   onDeleteRow,
+  onMoveRow,
   onSetCellValue,
 }: GithubShowTableProps) {
   // 两步删除:× → ?(变红)→ 再点 → 真删;失焦自动取消
@@ -117,15 +121,15 @@ function GithubShowTable({
         <div className="sl-gh-cell sl-gh-cell--insights" role="columnheader" title="做这件事的收获 / 可复用的思路(开发者自填)">
           启发
         </div>
-        <div className="sl-gh-cell sl-gh-cell--demo" role="columnheader" title="可选:线上地址 / 演示链接,可写说明,含 http 自动可点">
-          线上地址
+        <div className="sl-gh-cell sl-gh-cell--demo" role="columnheader" title="可选:产出 / 成果链接,可写说明,含 http 自动可点">
+          产出
         </div>
         {columns.map((c) => (
           <div
             className={`sl-gh-cell sl-gh-cell--custom${c.type === 'multi-select' ? ' is-multi' : ''}`}
             role="columnheader"
             key={c.id}
-            title={`${c.title}(${c.type === 'multi-select' ? '多选' : '文本'})`}
+            title={`${c.title}(${c.type === 'multi-select' ? '多选' : c.type === 'number' ? '数字' : '文本'})`}
           >
             {c.title}
           </div>
@@ -135,8 +139,10 @@ function GithubShowTable({
         </div>
       </div>
 
-      {rows.map((row) => {
+      {rows.map((row, idx) => {
         const confirming = confirmDeleteId === row.id;
+        const isFirst = idx === 0;
+        const isLast = idx === rows.length - 1;
         return (
           <div
             className="sl-gh-row"
@@ -182,16 +188,26 @@ function GithubShowTable({
             </div>
             <div className="sl-gh-cell sl-gh-cell--demo" role="cell">
               <AutoTextarea
-                value={row.demoUrl}
-                placeholder="可选:线上地址 / 说明,含 http 自动可点…"
-                ariaLabel="线上地址"
-                onChange={(v) => onUpdateRow(row.id, { demoUrl: v })}
+                value={row.output}
+                placeholder="可选:产出 / 成果链接或说明,含 http 自动可点…"
+                ariaLabel="产出"
+                onChange={(v) => onUpdateRow(row.id, { output: v })}
               />
             </div>
             {columns.map((c) => (
-              <div className="sl-gh-cell sl-gh-cell--custom" role="cell" key={c.id}>
+              <div
+                className={`sl-gh-cell sl-gh-cell--custom${c.type === 'multi-select' ? ' is-multi' : ''}${c.type === 'number' ? ' is-num' : ''}`}
+                role="cell"
+                key={c.id}
+              >
                 {c.type === 'multi-select' ? (
                   <MultiSelectCell
+                    value={row.values[c.id] ?? ''}
+                    ariaLabel={c.title}
+                    onCommit={(v) => onSetCellValue(row.id, c.id, v)}
+                  />
+                ) : c.type === 'number' ? (
+                  <NumberCell
                     value={row.values[c.id] ?? ''}
                     ariaLabel={c.title}
                     onCommit={(v) => onSetCellValue(row.id, c.id, v)}
@@ -207,23 +223,45 @@ function GithubShowTable({
               </div>
             ))}
             <div className="sl-gh-cell sl-gh-cell--ops" role="cell">
-              <button
-                type="button"
-                className={`sl-gh-del${confirming ? ' is-confirming' : ''}`}
-                title={confirming ? '再次点击确认删除' : '删除此行'}
-                aria-label={confirming ? '确认删除' : '删除'}
-                onBlur={() => { if (confirming) setConfirmDeleteId(null); }}
-                onClick={() => {
-                  if (confirming) {
-                    onDeleteRow(row.id);
-                    setConfirmDeleteId(null);
-                  } else {
-                    setConfirmDeleteId(row.id);
-                  }
-                }}
-              >
-                {confirming ? '?' : '×'}
-              </button>
+              <div className="sl-gh-ops">
+                <button
+                  type="button"
+                  className="sl-gh-move"
+                  title="上移"
+                  aria-label={`上移 ${row.name || row.id}`}
+                  disabled={isFirst}
+                  onClick={() => onMoveRow(row.id, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="sl-gh-move"
+                  title="下移"
+                  aria-label={`下移 ${row.name || row.id}`}
+                  disabled={isLast}
+                  onClick={() => onMoveRow(row.id, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className={`sl-gh-del${confirming ? ' is-confirming' : ''}`}
+                  title={confirming ? '再次点击确认删除' : '删除此行'}
+                  aria-label={confirming ? '确认删除' : '删除'}
+                  onBlur={() => { if (confirming) setConfirmDeleteId(null); }}
+                  onClick={() => {
+                    if (confirming) {
+                      onDeleteRow(row.id);
+                      setConfirmDeleteId(null);
+                    } else {
+                      setConfirmDeleteId(row.id);
+                    }
+                  }}
+                >
+                  {confirming ? '?' : '×'}
+                </button>
+              </div>
             </div>
           </div>
         );
