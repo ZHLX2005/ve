@@ -1,7 +1,7 @@
-// src/components/ShareButton.tsx —— github-show 公开分享控制入口。
+﻿// src/components/ShareButton.tsx —— github-show 公开分享控制入口。
 //
 // 只在「登录 + 自己编辑」场景下挂载(由 index.tsx 守卫):
-//   - 点击 🔗 分享 → 弹层(details/summary 自管理 + click-outside dismiss)
+//   - 点击「分享」 → 弹层(details/summary 自管理 + click-outside dismiss)
 //   - 内容:当前 visibility 状态 + 切换按钮 + 分享链接 + 复制按钮
 //   - 切换 visibility 走 kvV1Service.setVisibility(写审计 set_public/set_private)
 //   - groupId 取 userV1Service.getDefaultGroup()(github-show 默认存于用户默认组)
@@ -57,9 +57,14 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent): void {
-      const target = e.target;
-      if (!(target instanceof Node)) return;
-      if (popoverRef.current && !popoverRef.current.contains(target)) {
+      const popover = popoverRef.current;
+      if (!popover) return;
+      // 组件运行在 Shadow DOM 内:document 级事件的 e.target 会被浏览器
+      // retarget 成 shadow host,直接 contains(target) 会把"点击弹层内部"
+      // 误判成外部而关闭弹层。composedPath() 保留穿过 shadow 边界的完整
+      // 路径,用它判断点击是否落在弹层内才准确。
+      const path = e.composedPath();
+      if (!path.includes(popover)) {
         setOpen(false);
       }
     }
@@ -193,7 +198,7 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
         aria-expanded={open}
         title="公开分享:设置可见性 + 复制分享链接"
       >
-        {isPublic ? '🌐 已公开' : '🔒 设为公开分享'}
+        {isPublic ? '已公开' : '设为公开分享'}
       </button>
 
       {open && (
@@ -209,9 +214,9 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
               {state.busy && state.visibility == null
                 ? '加载中…'
                 : isPublic
-                  ? '🌐 公开(任何人可经 ?groupId=' + (state.groupId ?? '') + ' 读取)'
+                  ? '公开(任何人可经 ?groupId=' + (state.groupId ?? '') + ' 读取)'
                   : state.visibility === 'private'
-                    ? '🔒 私有(仅自己可见)'
+                    ? '私有(仅自己可见)'
                     : '—'}
             </span>
           </div>
@@ -228,7 +233,7 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
                 onClick={() => void handleToggle()}
                 disabled={state.busy}
               >
-                {state.busy ? '切换中…' : isPublic ? '🔒 改为私有' : '🌐 设为公开'}
+                {state.busy ? '切换中…' : isPublic ? '改为私有' : '设为公开'}
               </button>
               <span className="sl-gh-share__hint">
                 {isPublic
@@ -255,7 +260,7 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
                   className="sl-gh-btn sl-gh-btn--primary"
                   onClick={() => void handleCopy()}
                 >
-                  {state.copied ? '✓ 已复制' : '📋 复制'}
+                  {state.copied ? '已复制' : '复制'}
                 </button>
               </div>
               <span className="sl-gh-share__hint">
@@ -274,3 +279,4 @@ export default function ShareButton({ ready = true }: ShareButtonProps) {
     </div>
   );
 }
+
