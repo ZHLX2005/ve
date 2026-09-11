@@ -4,7 +4,7 @@
 // 行 actions 默认隐藏,hover 整行才显示(避免视觉噪音)。
 //
 // 可见性(2026-08-30 起):KvView.visibility = 'public' 时行内额外出
-// 「🔗」按钮 → 调用 store.getKvPublicUrl + navigator.clipboard 复制公开链接,
+// 「复制」按钮 → 调用 store.getKvPublicUrl + navigator.clipboard 复制公开链接,
 // 顶部 toast 提示成功。private 行不显示(按 contract 不应有公开读入口)。
 
 import type { KvListResult, KvTagCount, KvView } from '@api/components/user-space';
@@ -113,8 +113,8 @@ export default function Inventory(props: InventoryProps) {
                   </td>
                   <td>
                     {item.visibility === 'public'
-                      ? <span className="sl-us-chip sl-us-chip--public" title="匿名可经 /kv/public/:key?groupId= 读取">🌐 公开</span>
-                      : <span className="sl-us-chip sl-us-chip--private" title="仅组内成员可见">🔒 私有</span>
+                      ? <span className="sl-us-chip sl-us-chip--public" title="匿名可经 /kv/public/:key?groupId= 读取">公开</span>
+                      : <span className="sl-us-chip sl-us-chip--private" title="仅组内成员可见">私有</span>
                     }
                   </td>
                   <td className="sl-us-table__cell-faint sl-us-table__cell-mono">
@@ -124,44 +124,40 @@ export default function Inventory(props: InventoryProps) {
                     <div className="sl-us-table__row-actions">
                       {item.visibility === 'public' && (
                         <button
-                          className="sl-us-btn sl-us-btn--ghost sl-us-btn--icon-sm"
+                          className="sl-us-btn sl-us-btn--ghost sl-us-btn--sm"
                           onClick={() => onCopyPublicLink(item)}
                           title="复制公开读链接"
-                          aria-label="复制公开链接"
                         >
-                          🔗
+                          复制
                         </button>
                       )}
                       <button
-                        className="sl-us-btn sl-us-btn--ghost sl-us-btn--icon-sm"
+                        className="sl-us-btn sl-us-btn--ghost sl-us-btn--sm"
                         onClick={() => onEdit(item)}
                         title="查看 / 编辑"
-                        aria-label="查看"
                       >
-                        ✎
+                          编辑
                       </button>
                       {canWrite && (
                         <button
-                          className="sl-us-btn sl-us-btn--ghost sl-us-btn--icon-sm"
+                          className="sl-us-btn sl-us-btn--ghost sl-us-btn--sm"
                           disabled={saving}
                           onClick={() => onDuplicate(item)}
                           title="复制到其他工作空间"
-                          aria-label="复制"
                         >
-                          ⎘
+                          跨组
                         </button>
                       )}
                       {canWrite && (
                         <button
-                          className="sl-us-btn sl-us-btn--danger-ghost sl-us-btn--icon-sm"
+                          className="sl-us-btn sl-us-btn--danger-ghost sl-us-btn--sm"
                           disabled={saving}
                           onClick={() => {
                             if (window.confirm(`删除 KV「${item.key}」?`)) onDelete(item);
                           }}
                           title="删除"
-                          aria-label="删除"
                         >
-                          ×
+                          删
                         </button>
                       )}
                     </div>

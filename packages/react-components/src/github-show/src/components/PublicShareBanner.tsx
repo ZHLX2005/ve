@@ -1,11 +1,8 @@
-// src/components/PublicShareBanner.tsx —— 公开分享模式顶部 banner。
+// src/components/PublicShareBanner.tsx —— 公开分享模式顶部轻量条。
 //
-// 出现在 readOnly=true 时:左边图标 + 文案("公开分享模式"),右边提供
-// 「📋 复制分享链接」(把当前 URL 再复制一次,方便转发) + 「我也要分享」链接
-// (跳转到组件路由不带参数 = 编辑自己的 github-show,前提是用户登录)。
-//
-// 设计意图:让访客一眼明白这是只读视图(不会误以为能编辑);并给分享者一个
-// "我能复用这套分享机制"的入口。
+// 出现在 readOnly=true 时:访客已经通过 ?groupId= 链接进入,知道这是只读公开内容,
+// 不再做大段说明;只保留两个轻量动作 — 复制当前链接(方便转发) + 跳到不带参数
+// 的同组件页(让访客也能 fork 一份自己的)。设计目标:小、安静、不抢戏。
 
 import { useState } from 'react';
 
@@ -53,30 +50,21 @@ export default function PublicShareBanner({ keyName, groupId }: PublicShareBanne
 
   return (
     <div className="sl-gh-public-banner" role="status">
-      <div className="sl-gh-public-banner__left">
-        <span className="sl-gh-public-banner__icon" aria-hidden="true">🌐</span>
-        <div className="sl-gh-public-banner__text">
-          <strong>公开分享模式</strong>
-          <span className="sl-gh-public-banner__hint">
-            正在只读查看工作空间 <code>#{groupId}</code> 的 KV{' '}
-            <code>{keyName}</code>(无需登录);任何编辑都不会被保存。
-          </span>
-        </div>
-      </div>
+      <span className="sl-gh-public-banner__label">公开分享 · {keyName} · #{groupId}</span>
       <div className="sl-gh-public-banner__actions">
         <button
           type="button"
           className="sl-gh-btn sl-gh-btn--ghost sl-gh-btn--sm"
           onClick={() => void handleCopy()}
         >
-          {copied ? '✓ 已复制' : '🔗 复制分享链接'}
+          {copied ? '已复制' : '复制链接'}
         </button>
         <a
           className="sl-gh-btn sl-gh-btn--primary sl-gh-btn--sm"
           href={ownEditUrl()}
           title="不带 groupId 参数访问 = 编辑自己的 github-show(需登录)"
         >
-          我也要分享 →
+          我也要用
         </a>
       </div>
     </div>

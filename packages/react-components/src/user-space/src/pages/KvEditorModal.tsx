@@ -194,7 +194,7 @@ export default function KvEditorModal({
                   onChange={() => setVisibility('private')}
                   disabled={saving || !canWrite}
                 />
-                <span>🔒 私有(仅组内成员可见)</span>
+                <span>私有(仅组内成员可见)</span>
               </label>
               <label className="sl-us-radio">
                 <input
@@ -205,7 +205,7 @@ export default function KvEditorModal({
                   onChange={() => setVisibility('public')}
                   disabled={saving || !canWrite}
                 />
-                <span>🌐 公开(匿名可经 `/kv/public/:key?groupId=` 读取)</span>
+                <span>公开(匿名可经 /kv/public/:key?groupId= 读取)</span>
               </label>
             </div>
             {visibility === 'public' && mode === 'edit' && groupId && (
@@ -217,7 +217,7 @@ export default function KvEditorModal({
                   disabled={saving}
                   title={getPublicUrl({ key: key.trim() || initial?.key || '', groupId })}
                 >
-                  🔗 复制公开链接
+                  复制公开链接
                 </button>
                 {publicLinkCopied && (
                   <span className="sl-us-field__hint sl-us-field__hint--ok">已复制到剪贴板</span>

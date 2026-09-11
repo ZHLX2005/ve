@@ -467,7 +467,7 @@ export default function UserSpace() {
   }
 
   /**
-   * 复制 KV 公开读链接到剪贴板(供 Inventory 行内「🔗」按钮 / 编辑弹窗内按钮调用)。
+   * 复制 KV 公开读链接到剪贴板(供 Inventory 行内「复制」按钮 / 编辑弹窗内按钮调用)。
    * 公开链接:`{origin}/api/v1/kv/public/{key}?groupId={groupId}`。
    * 不发起请求——纯字符串拼接 + navigator.clipboard.writeText,失败降级
    * execCommand(老浏览器 / 非安全上下文)。
@@ -719,7 +719,7 @@ export default function UserSpace() {
                 aria-label="切换工作空间列表"
                 aria-expanded={sidebarOpen}
               >
-                ☰
+                菜单
               </button>
               <div className="sl-us-topbar__title">{selectedGroup.name}</div>
               <span className="sl-us-topbar__crumb-sep">/</span>
